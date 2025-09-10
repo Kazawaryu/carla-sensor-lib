@@ -11,8 +11,6 @@ import threading
 import time
 from time import sleep
 
-from util.CarlaLoader import CarlaLoader
-CarlaLoader.load_carla_lib()
 import carla
 import sys
 sys.path.append('../')
