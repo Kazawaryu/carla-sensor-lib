@@ -21,8 +21,7 @@ simulated_sensor:
     geometry_association_max_dist_in_meters: 3.0
   use_sensor_centric_frame: True
 lidar_sensor:
-  lower_fov: -80.0
-  upper_fov: 30.0
+  fov: 120
   channels: 64
   range: 100
   rotation_period: 0.05
