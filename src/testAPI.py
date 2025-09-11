@@ -4,20 +4,21 @@ import carla
 import json
 import os
 import sys
+import yaml
 
 # Add the parent directory of the API to the Python path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from CarlaCDASimAPI import CarlaCDASimAPI
 
-def _run_test(client, config):
+def _run_test(client, carla_config, sensor_config):
     """
     Runs the core test logic.
     """
     world = client.get_world()
     
     # Use the existing _setup_vehicle function to spawn a vehicle
-    vehicle = _setup_vehicle(world, config)
+    vehicle = _setup_vehicle(world, carla_config)
 
     print("set up vehicle")
     
@@ -25,13 +26,13 @@ def _run_test(client, config):
     api = CarlaCDASimAPI.build_from_world(world)
     
     # Get the sensor configuration from the stack.json file
-    sensor_config = config.get("sensors", [])[0]
+    sensor_config = carla_config.get("sensors", [])[0]
 
     print("Creating simulated sensor...")
     
     # Use the create_simulated_semantic_lidar_sensor function from the API
     simulated_sensor = api.create_simulated_semantic_lidar_sensor(
-        simulated_sensor_config={},
+        simulated_sensor_config=sensor_config["attributes"],
         carla_sensor_config=sensor_config["attributes"],
         noise_model_config={"noise_model_name": "identity"},
         detection_cycle_delay_seconds=0.1,
@@ -93,20 +94,22 @@ def main(args):
         world.apply_settings(settings)
         
         with open(args.file) as f:
-            config = json.load(f)
+            carla_config = json.load(f)
+        with open(args.sensor_config_file) as f:
+            sensor_config = yaml.safe_load(f)
 
         print('Loaded configuration from stack.json')
 
         # The _run_test function now returns the spawned actors
-        vehicle, simulated_sensor = _run_test(client, config)
+        vehicle, simulated_sensor = _run_test(client, carla_config, sensor_config)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
 
     finally:
         # Destroy the actors that were created in the try block, ensuring cleanup on exit.
-        if simulated_sensor:
-            simulated_sensor.destroy()
+        #if simulated_sensor:
+            #simulated_sensor.destroy()
         if vehicle:
             vehicle.destroy()
         
@@ -120,7 +123,8 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser(description='Test script for CARLACDASimAPI')
     argparser.add_argument('--host', metavar='H', default='localhost', help='IP of the host CARLA Simulator (default: localhost)')
     argparser.add_argument('--port', metavar='P', default=2000, type=int, help='TCP port of CARLA Simulator (default: 2000)')
-    argparser.add_argument('-f', '--file', default='stack.json', help='Configuration file to be used (default: stack.json)')
+    argparser.add_argument('-f1', '--file', default='stack.json', help='Configuration file to be used (default: stack.json)')
+    argparser.add_argument('-f2', '--sensor_config_file', default='config/simulated_sensor_config.yaml', help='Simulated sensor configuration file to be used (default: config/simulated_sensor_config.yaml)')
     argparser.add_argument('-v', '--verbose', action='store_true', dest='debug', help='print debug information')
 
     args = argparser.parse_args()

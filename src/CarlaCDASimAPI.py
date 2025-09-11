@@ -195,7 +195,9 @@ def generate_lidar_bp(blueprint_library, carla_sensor_config, type= None):
         lidar_bp = blueprint_library.find("sensor.lidar.ray_cast_semantic")
     else:
         lidar_bp = blueprint_library.filter(type)[0]
-    lidar_bp.set_attribute("fov", str(carla_sensor_config["fov"]))
+    print("attempting to set bp attributes")
+    lidar_bp.set_attribute("lower_fov", str(carla_sensor_config["lower_fov"]))
+    lidar_bp.set_attribute("upper_fov", str(carla_sensor_config["upper_fov"]))
     lidar_bp.set_attribute("channels", str(carla_sensor_config["channels"]))
     lidar_bp.set_attribute("range", str(carla_sensor_config["range"]))
     lidar_bp.set_attribute("rotation_frequency", str(1.0 / carla_sensor_config["rotation_period"]))
