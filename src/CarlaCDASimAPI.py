@@ -196,6 +196,7 @@ def generate_lidar_bp(blueprint_library, carla_sensor_config, type= None):
     else:
         lidar_bp = blueprint_library.filter(type)[0]
     print("attempting to set bp attributes")
+    print(carla_sensor_config) # debug print
     lidar_bp.set_attribute("lower_fov", str(carla_sensor_config["lower_fov"]))
     lidar_bp.set_attribute("upper_fov", str(carla_sensor_config["upper_fov"]))
     lidar_bp.set_attribute("channels", str(carla_sensor_config["channels"]))

@@ -11,7 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from CarlaCDASimAPI import CarlaCDASimAPI
 
-def _run_test(client, carla_config, sensor_config):
+def _run_test(client, carla_config, simulated_sensor_config):
     """
     Runs the core test logic.
     """
@@ -26,13 +26,14 @@ def _run_test(client, carla_config, sensor_config):
     api = CarlaCDASimAPI.build_from_world(world)
     
     # Get the sensor configuration from the stack.json file
-    sensor_config = carla_config.get("sensors", [])[0]
+    sensor_config = carla_config.get("sensors", [])[1]
 
     print("Creating simulated sensor...")
+    print(sensor_config)
     
     # Use the create_simulated_semantic_lidar_sensor function from the API
     simulated_sensor = api.create_simulated_semantic_lidar_sensor(
-        simulated_sensor_config=sensor_config["attributes"],
+        simulated_sensor_config=simulated_sensor_config,
         carla_sensor_config=sensor_config["attributes"],
         noise_model_config={"noise_model_name": "identity"},
         detection_cycle_delay_seconds=0.1,
@@ -96,12 +97,12 @@ def main(args):
         with open(args.file) as f:
             carla_config = json.load(f)
         with open(args.sensor_config_file) as f:
-            sensor_config = yaml.safe_load(f)
+            simulated_sensor_config = yaml.safe_load(f)
 
         print('Loaded configuration from stack.json')
 
         # The _run_test function now returns the spawned actors
-        vehicle, simulated_sensor = _run_test(client, carla_config, sensor_config)
+        vehicle, simulated_sensor = _run_test(client, carla_config, simulated_sensor_config)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
@@ -124,7 +125,7 @@ if __name__ == '__main__':
     argparser.add_argument('--host', metavar='H', default='localhost', help='IP of the host CARLA Simulator (default: localhost)')
     argparser.add_argument('--port', metavar='P', default=2000, type=int, help='TCP port of CARLA Simulator (default: 2000)')
     argparser.add_argument('-f1', '--file', default='stack.json', help='Configuration file to be used (default: stack.json)')
-    argparser.add_argument('-f2', '--sensor_config_file', default='config/simulated_sensor_config.yaml', help='Simulated sensor configuration file to be used (default: config/simulated_sensor_config.yaml)')
+    argparser.add_argument('-f2', '--sensor_config_file', default='../config/simulated_sensor_config.yaml', help='Simulated sensor configuration file to be used (default: config/simulated_sensor_config.yaml)')
     argparser.add_argument('-v', '--verbose', action='store_true', dest='debug', help='print debug information')
 
     args = argparser.parse_args()
