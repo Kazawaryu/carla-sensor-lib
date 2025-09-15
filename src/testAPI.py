@@ -104,7 +104,7 @@ def main(args):
         print('Loaded configuration from stack.json')
 
         # The _run_test function now returns the spawned actors
-        vehicle, simulated_sensor = _run_test(client, carla_config, simulated_sensor_config, noise_config)
+        vehicle, simulated_sensor = _run_test(client, carla_config, simulated_sensor_config.get("simulated_sensor", {}), noise_config)
 
     except Exception as e:
         logging.error(f"An error occurred: {e}")
