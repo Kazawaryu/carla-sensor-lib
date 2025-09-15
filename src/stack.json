@@ -20,7 +20,7 @@
                 "range": 85,
                 "channels": 64,
                 "points_per_second": 600000,
-                "rotation_frequency": 20,
+                "rotation_period": 0.25,
                 "lower_fov": -80.0,
                 "upper_fov": 30.0,
                 "atmosphere_attenuation_rate": 0.004,
