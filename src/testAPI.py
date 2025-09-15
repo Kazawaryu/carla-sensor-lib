@@ -58,6 +58,15 @@ def _run_test(client, carla_config, simulated_sensor_config, noise_config):
     assert simulated_sensor is not None
     logging.info("Test passed: Sensor was created successfully.")
 
+    print("Entering world tick loop")
+
+    world.tick()
+    try:
+        while True:
+            _ = world.tick()
+    except KeyboardInterrupt:
+        pass
+
     # Return the spawned actors so they can be destroyed in the main function.
     return vehicle, simulated_sensor
 
