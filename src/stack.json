@@ -18,9 +18,9 @@
             "spawn_point": {"x": 0.0, "y": 0.0, "z": 2.4, "roll": 0.0, "pitch": 0.0, "yaw": 0.0},
             "attributes": {
                 "range": 85,
-                "channels": 64,
+                "channels": 64, 
                 "points_per_second": 600000,
-                "rotation_period": 0.25,
+                "rotation_period": 0.05,
                 "lower_fov": -80.0,
                 "upper_fov": 30.0,
                 "atmosphere_attenuation_rate": 0.004,

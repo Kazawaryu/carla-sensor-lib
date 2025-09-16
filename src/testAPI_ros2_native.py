@@ -19,6 +19,7 @@ def _run_test(client, carla_config, simulated_sensor_config, noise_config):
     
     # Use the existing _setup_vehicle function to spawn a vehicle
     vehicle = _setup_vehicle(world, carla_config)
+    _ = _setup_sensors(world, vehicle, carla_config.get("sensors", []))
 
     print("set up vehicle")
     
@@ -60,15 +61,13 @@ def _run_test(client, carla_config, simulated_sensor_config, noise_config):
 
     print("Entering world tick loop")
 
+    vehicle.set_autopilot(True)
     world.tick()
     try:
         while True:
             _ = world.tick()
     except KeyboardInterrupt:
-        pass
-
-    # Return the spawned actors so they can be destroyed in the main function.
-    return vehicle, simulated_sensor
+        return vehicle, simulated_sensor
 
 def _setup_vehicle(world, config):
     logging.debug("Spawning vehicle: {}".format(config.get("type")))
@@ -91,12 +90,15 @@ def _setup_sensors(world, vehicle, sensors_config):
 
     sensors = []
     for sensor in sensors_config:
+        if sensor.get("id") == "lidar":
+            continue # Skip lidar for simulated version
         logging.debug("Spawning sensor: {}".format(sensor))
 
         bp = bp_library.filter(sensor.get("type"))[0]
         bp.set_attribute("ros_name", sensor.get("id")) 
-        bp.set_attribute("role_name", sensor.get("id")) 
+        bp.set_attribute("role_name", sensor.get("id"))
         for key, value in sensor.get("attributes", {}).items():
+            print(f"Setting attribute {key} to {value} for {sensor.get('id')}")
             bp.set_attribute(str(key), str(value))
 
         wp = carla.Transform(
@@ -146,12 +148,10 @@ def main(args):
         with open(args.noise_config) as f:
             noise_config = yaml.safe_load(f)
 
-        vehicle = _setup_vehicle(world, config=carla_config)
-        sensors = _setup_sensors(world, vehicle, carla_config.get("sensors", []))
+        # vehicle = _setup_vehicle(world, config=carla_config)
+        # sensors = _setup_sensors(world, vehicle, carla_config.get("sensors", []))
 
         _ = world.tick()
-
-        vehicle.set_autopilot(True)
 
         logging.info("Running...")
 
