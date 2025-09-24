@@ -16,16 +16,9 @@ class CarlaUtils:
     Generic CARLA utility functions.
     """
 
-    #CARLA 0.9.10 type lookup table for van, cycle, motorcycle, truck
-    vehicle_lookup_table = {'carlacola': "TRUCK", 
-                            'cybertruck': "TRUCK", 
-                            't2': "VAN", 
-                            'low_rider': "MOTORCYCLE",
-                            'ninja': "MOTORCYCLE",
-                            'yzf': "MOTORCYCLE",
-                            'crossbike': "CYCLIST",
-                            'century': "CYCLIST",
-                            'omafiets': "CYCLIST"}
+    # CARLA 0.9.10 type lookup table for van, cycle, motorcycle, truck was removed.
+    # This is because the type_id strings for these vehicles were not standardized.
+    # The new 'base_type' attribute in CARLA 0.10.0 provides a more robust way to classify vehicles.
 
     @staticmethod
     def vector3d_to_numpy(vec):
@@ -91,22 +84,24 @@ class CarlaUtils:
         :param allowed_semantic_tags: List of semantic tags which are allowed to be detected by the sensor.
         :return: The object type, or NONE if not in the allowed list.
         """
-        #using type_id instead of semantic_tags
-        #issue with semantic_tags in version 0.9.10:https://github.com/carla-simulator/carla/issues/2161
-
-        temp_id_list =  carla_actor.type_id.split(".")
-        temp_id = temp_id_list[0]
-        if temp_id == "vehicle":
-            vehicle_type = temp_id_list[2]
-            #for object_type other than CAR
-            if vehicle_type in CarlaUtils.vehicle_lookup_table.keys():
-                return CarlaUtils.vehicle_lookup_table[vehicle_type]
+        # The vehicle lookup table and logic based on type_id has been replaced.
+        # CARLA 0.10.0 provides a more robust 'base_type' attribute on the vehicle blueprint.
+        # This new attribute provides a standard vehicle classification.
+        # 
+        actor_type = "NONE"
+        if carla_actor.type_id.startswith("vehicle."):
+            # New vehicles in CARLA 0.10.0 have a 'base_type' attribute
+            if 'base_type' in carla_actor.attributes:
+                actor_type = carla_actor.attributes['base_type'].upper()
             else:
-                return "CAR"
-        elif temp_id == "walker":
-            return "PEDESTRIAN"
-        else:
-            return "NONE"
+                # Fallback for older vehicles that might still exist
+                actor_type = "CAR"
+        elif carla_actor.type_id.startswith("walker."):
+            actor_type = "PEDESTRIAN"
+        elif carla_actor.type_id.startswith("traffic."):
+            actor_type = "TRAFFIC_SIGN"
+            
+        return actor_type if actor_type in allowed_semantic_tags else "NONE"
 
     @staticmethod
     def get_transform(sensor_position, sensor_rotation):
