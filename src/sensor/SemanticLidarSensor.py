@@ -307,11 +307,11 @@ class SemanticLidarSensor(SimulatedSensor):
         hitpoints_in_map_frame = []
 
         for hitpoint in hitpoints:
-            # The hitpoint argument is now a carla.SemanticLidarDetection object
-            hitpoint_in_lidar_frame = hitpoint.point
+            # hitpoint is a numpy array [x, y, z]
+            hitpoint_in_lidar_frame = hitpoint
             # transform function translates a 3D point from local to global
             # coordinates using the current transformation as frame of reference
-            hitpoint_in_map_frame = self.__sensor.carla_sensor.get_transform().transform(hitpoint_in_lidar_frame)
+            hitpoint_in_map_frame = self.__sensor.carla_sensor.get_transform().transform(carla.Location(x=hitpoint_in_lidar_frame[0], y=hitpoint_in_lidar_frame[1], z=hitpoint_in_lidar_frame[2]))
             new_pos = np.array([hitpoint_in_map_frame.x, hitpoint_in_map_frame.y, hitpoint_in_map_frame.z])
             hitpoints_in_map_frame.append(new_pos)
 
