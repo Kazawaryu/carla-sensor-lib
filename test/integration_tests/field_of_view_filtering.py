@@ -61,7 +61,7 @@ def set_blueprint_attributes(blueprint, attributes):
     blueprint.set_attribute("channels", str(attributes["channels"]))
     blueprint.set_attribute("range", str(attributes["range"]))
 
-    # CARLA 0.9.10 uses 'rotation_frequency' instead of 'rotation_period'
+    # CARLA 0.10 uses 'rotation_frequency' instead of 'rotation_period'
     # dummy_lidar_blueprint.set_attribute("rotation_period", "0.1")
     blueprint.set_attribute(
         "rotation_frequency", str(1 / attributes["rotation_period"])
@@ -84,7 +84,10 @@ def spawn_traffic_light_lidar(world):
             "adjustable_threshold_scaling_parameters": {"dropoff_rate": 0.01},
         },
         "geometry_reassociation": {
-            "sample_count": 3,
+            # CARLA 0.10 API: Updated from old "sample_count": 3 to new sampling parameters
+            "min_sample_count": 1,
+            "max_sample_count": 10,
+            "downsample_ratio": 2,
             "geometry_association_max_dist_in_meters": 2.0,
         },
         "use_sensor_centric_frame": True,
@@ -142,7 +145,10 @@ def spawn_vehicle_lidar(world):
             "adjustable_threshold_scaling_parameters": {"dropoff_rate": 0.01},
         },
         "geometry_reassociation": {
-            "sample_count": 3,
+            # CARLA 0.10 API: Updated from old "sample_count": 3 to new sampling parameters  
+            "min_sample_count": 1,
+            "max_sample_count": 10,
+            "downsample_ratio": 2,
             "geometry_association_max_dist_in_meters": 2.0,
         },
         "use_sensor_centric_frame": True,

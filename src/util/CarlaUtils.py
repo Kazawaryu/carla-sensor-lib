@@ -16,7 +16,7 @@ class CarlaUtils:
     Generic CARLA utility functions.
     """
 
-    # CARLA 0.9.10 type lookup table for van, cycle, motorcycle, truck was removed.
+        #CARLA 0.10 type lookup table for van, cycle, motorcycle, truck
     # This is because the type_id strings for these vehicles were not standardized.
     # The new 'base_type' attribute in CARLA 0.10.0 provides a more robust way to classify vehicles.
 
@@ -71,7 +71,7 @@ class CarlaUtils:
         try:
             bounding_box = carla_actor.bounding_box
         except AttributeError:
-            raise AttributeError("There is no bounding_box attribute, in 0.9.10 only Pedestrian and Vehicles have this attribute, please check the input...")
+            raise AttributeError("There is no bounding_box attribute, in 0.10 only Pedestrian and Vehicles have this attribute, please check the input...")
 
         bounding_box_locations = bounding_box.get_world_vertices(carla_actor.get_transform())
         return [CarlaUtils.vector3d_to_numpy(location) for location in bounding_box_locations]

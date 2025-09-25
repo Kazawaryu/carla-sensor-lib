@@ -33,7 +33,10 @@ class SimulatedSensorTestUtils:
                 }
             },
             "geometry_reassociation": {
-                "sample_count": 3,
+                # CARLA 0.10 API: Updated from old "sample_count": 3 to new sampling parameters
+                "min_sample_count": 1,
+                "max_sample_count": 10,
+                "downsample_ratio": 2,
                 "geometry_association_max_dist_in_meters": 2.0,
             },
             "use_sensor_centric_frame": True
