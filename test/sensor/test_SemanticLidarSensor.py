@@ -115,7 +115,7 @@ class TestSemanticLidarSensor(unittest.TestCase):
         self.sensor.apply_occlusion.assert_called_once_with(detected_objects, actor_angular_extents, hitpoints,
                                                             detection_thresholds)
         self.sensor.apply_noise.assert_called_once_with(detected_objects)
-        self.sensor.update_object_frame_and_timestamps.assert_called_once_with(detected_objects, hitpoints, timestamp)
+        self.sensor.update_object_frame_and_timestamps.assert_called_once_with(detected_objects, timestamp)
 
         self.assertEqual(result, detected_objects)
         self.assertEqual(self.sensor._SemanticLidarSensor__detected_objects, detected_objects)
@@ -249,15 +249,20 @@ class TestSemanticLidarSensor(unittest.TestCase):
         }
 
         # Restore and verify real sampling returns the expected sample size
-        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 4)
+        # CARLA 0.10 API: sample_hitpoints(hitpoints, min_sample_size, max_sample_size, downsample_ratio)
+        # For 6 points, with downsample_ratio=1.5: ceil(6/1.5) = 4, clamped to [4,4] = 4
+        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 4, 4, 1.5)
         assert len(sampled_hitpoints[0]) == 4
         assert len(sampled_hitpoints[1]) == 4
-        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 5)
+        
+        # For 6 points, with downsample_ratio=1.2: ceil(6/1.2) = 5, clamped to [5,5] = 5
+        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 5, 5, 1.2)
         assert len(sampled_hitpoints[0]) == 5
         assert len(sampled_hitpoints[1]) == 5
 
-        # Verify sampling does not repeat points
-        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 6)
+        # Verify sampling does not repeat points - test with all 6 points
+        # For 6 points, with downsample_ratio=1: ceil(6/1) = 6, clamped to [1,10] = 6
+        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 1, 10, 1)
         assert len(sampled_hitpoints[0]) == 6
         assert len(sampled_hitpoints[1]) == 6
         assert np.alltrue([points_list[i] in sampled_hitpoints[0] for i in range(0, 6)])
@@ -615,7 +620,7 @@ class TestSemanticLidarSensor(unittest.TestCase):
         ]
 
         # Execute
-        new_detected_objects = self.sensor.update_object_frame_and_timestamps(detected_objects, hitpoints, timestamp)
+        new_detected_objects = self.sensor.update_object_frame_and_timestamps(detected_objects, timestamp)
 
         # Assert object types updated
         assert new_detected_objects[0].type == "Bridge"
@@ -664,7 +669,6 @@ class TestSemanticLidarSensor(unittest.TestCase):
 
         # Call and provide assertions
         corrected_objects = self.sensor.update_object_frame_and_timestamps_from_hitpoint(detected_object,
-                                                                             hitpoints.get(detected_object.objectId),
                                                                              timestamp)
         assert "Bridge" == corrected_objects.type
         assert timestamp == corrected_objects.timestamp
