@@ -15,9 +15,10 @@ RUN apt-get update && apt-get install -y \
 #Set up the working directory
 WORKDIR /home/CarlaCDASimAdapter/
 
-#No longer use .egg, now use .whl for Carla 10
-COPY carla-0.10.0-cp310-linux_x86_64.whl /tmp/
-RUN pip3 install /tmp/carla-0.10.0-cp310-linux_x86_64.whl
+
+# Copy the correct CARLA .whl for Python 3.10 from PythonAPI/carla
+COPY PythonAPI/carla/dist/carla-0.10.0-cp310-cp310-linux_x86_64.whl /tmp/
+RUN pip3 install /tmp/carla-0.10.0-cp310-cp310-linux_x86_64.whl
 
 
 RUN pip3 install numpy PyYAML scipy dataclasses
