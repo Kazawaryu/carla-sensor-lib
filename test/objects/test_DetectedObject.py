@@ -12,6 +12,9 @@ from unittest.mock import MagicMock
 import carla
 import numpy as np
 from scipy.spatial.transform import Rotation
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
 
 from objects.DetectedObject import DetectedObjectBuilder
 
@@ -36,7 +39,7 @@ class TestDetectedObject(unittest.TestCase):
         detected_object = DetectedObjectBuilder.build_detected_object(self.carla_actor, ["Vehicles"])
 
         assert detected_object.carla_actor == self.carla_actor
-        assert detected_object.objectId == 1
+        assert detected_object.id == 1  # Updated: use 'id' instead of 'objectId'
         assert detected_object.type == "Vehicles"
 
         # Bounding box

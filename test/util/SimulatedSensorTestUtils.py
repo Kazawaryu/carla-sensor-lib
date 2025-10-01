@@ -45,8 +45,7 @@ class SimulatedSensorTestUtils:
     @staticmethod
     def generate_lidar_sensor_config():
         return {
-            "lower_fov": -80.0,
-            "upper_fov": 30.0,
+            "horizontal_fov": 360.0,  # CARLA 0.10.0: replaces upper_fov/lower_fov
             "channels": 60,
             "range": 100.0,
             "rotation_period": 0.05,
@@ -98,12 +97,12 @@ class SimulatedSensorTestUtils:
         """
         carla_sensor = MagicMock()
         sensor_config = MagicMock()
-        sensor_config.channels = 1
-        sensor_config.range = 1000.0
-        sensor_config.rotation_frequency = 10.0
-        sensor_config.points_per_second = 10000
-        sensor_config.upper_fov = 20
-        sensor_config.lower_fov = -40
+        carla_sensor.attributes = {
+            "points_per_second": 1000,
+            "rotation_frequency": 10.0,
+            "horizontal_fov": 360,  # CARLA 0.10.0: replaces upper_fov/lower_fov  
+            "channels": 32
+        }
         sensor_config.position = carla.Location(10.0, 15.0, 7.0)
         rotation = carla.Rotation(0, 0, 0)
         sensor_config.transform = MagicMock(

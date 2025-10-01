@@ -9,11 +9,13 @@ import json
 import time
 import unittest
 import sys
+import os
 from dataclasses import replace
 from unittest.mock import MagicMock
 
 import numpy as np
-sys.path.append('../')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'util')))
 
 
 from CarlaCDASimAPI import CarlaCDASimAPI

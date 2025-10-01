@@ -8,9 +8,12 @@
 
 import os
 import unittest
+import sys
 
 import numpy as np
 import yaml
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
 
 from util.SimulatedSensorUtils import SimulatedSensorUtils
 from test.util.SimulatedSensorTestUtils import SimulatedSensorTestUtils

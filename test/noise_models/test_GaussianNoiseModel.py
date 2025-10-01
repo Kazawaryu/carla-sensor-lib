@@ -10,6 +10,10 @@ import unittest
 from unittest.mock import MagicMock
 
 import numpy as np
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'util')))
 
 from noise_models.GaussianNoiseModel import GaussianNoiseModel
 from test.util.SimulatedSensorTestUtils import SimulatedSensorTestUtils
@@ -27,8 +31,13 @@ class TestGaussianNoiseModel(unittest.TestCase):
 
         noise_model.apply_position_noise(object_list)
 
-        self.assertEqual(object_list[0].position.tolist(), [1.1, 2.2, 3.3])
-        self.assertEqual(object_list[1].position.tolist(), [4.1, 5.2, 6.3])
+        # Allow tolerance for floating point position values  
+        self.assertAlmostEqual(object_list[0].position[0], 1.1, places=6)
+        self.assertAlmostEqual(object_list[0].position[1], 2.2, places=6) 
+        self.assertAlmostEqual(object_list[0].position[2], 3.3, places=6)
+        self.assertAlmostEqual(object_list[1].position[0], 4.1, places=6)
+        self.assertAlmostEqual(object_list[1].position[1], 5.2, places=6)
+        self.assertAlmostEqual(object_list[1].position[2], 6.3, places=6)
         np.random.normal.assert_called_with(0.0, [0.8, 0.8, 0.8], size=3)
 
     def test_apply_orientation_noise(self):

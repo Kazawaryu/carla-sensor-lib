@@ -142,7 +142,7 @@ class TestSemanticLidarSensor(unittest.TestCase):
         result = self.sensor.get_scene_detected_objects()
         self.assertEqual(len(result), len(actors))
         for i in range(len(result)):
-            self.assertEqual(result[i].objectId, 0)
+            self.assertEqual(result[i].id, 0)  # Updated: use 'id' instead of 'objectId'
 
         # Restore old function
         DetectedObjectBuilder.build_detected_object = old_fcn
@@ -155,8 +155,9 @@ class TestSemanticLidarSensor(unittest.TestCase):
         self.assertEqual(len(filtered_objects), 2)
         self.assertEqual(filtered_objects[0].type, "Vehicles")
         self.assertEqual(filtered_objects[1].type, "Pedestrians")
-        self.assertEqual(object_ranges[0], 38.635709988013005)
-        self.assertEqual(object_ranges[1], 38.635709988013005)
+        # Use tolerance for floating point comparisons
+        self.assertAlmostEqual(object_ranges[0], 38.635709988013005, places=6)
+        self.assertAlmostEqual(object_ranges[1], 38.635709988013005, places=6)
 
         # Forceably adjust configured filter distance and test filtering by distance
         self.sensor._SemanticLidarSensor__simulated_sensor_config["prefilter"]["max_distance_meters"] = 0.0001
