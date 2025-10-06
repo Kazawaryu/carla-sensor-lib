@@ -255,7 +255,6 @@ class TestSemanticLidarSensor(unittest.TestCase):
             1: points_list
         }
 
-        # Restore and verify real sampling returns the expected sample size
         # CARLA 0.10 API: sample_hitpoints(hitpoints, min_sample_size, max_sample_size, downsample_ratio)
         # For 6 points, with downsample_ratio=1.5: ceil(6/1.5) = 4, clamped to [4,4] = 4
         sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 4, 4, 1.5)

@@ -60,18 +60,25 @@ class TestGaussianNoiseModel(unittest.TestCase):
     def test_apply_type_noise(self):
         object_list = SimulatedSensorTestUtils.generate_test_data_detected_objects()
 
-        np.random.default_rng = MagicMock(return_value=MagicMock(choice=MagicMock(return_value="PEDESTRIAN")))
+        # Use a context manager to ensure the mock is cleaned up
+        mock_rng = MagicMock(choice=MagicMock(return_value="PEDESTRIAN"))
+        original_default_rng = np.random.default_rng
+        np.random.default_rng = MagicMock(return_value=mock_rng)
 
-        noise_model = GaussianNoiseModel(self.config)
+        try:
+            noise_model = GaussianNoiseModel(self.config)
 
-        object_list = noise_model.apply_type_noise(object_list)
+            object_list = noise_model.apply_type_noise(object_list)
 
-        self.assertEqual(object_list[0].type, "PEDESTRIAN")
-        self.assertEqual(object_list[1].type, "PEDESTRIAN")
-        self.assertEqual(object_list[2].type, "PEDESTRIAN")
-        self.assertEqual(object_list[3].type, "PEDESTRIAN")
-        self.assertEqual(object_list[4].type, "PEDESTRIAN")
-        self.assertEqual(object_list[5].type, "PEDESTRIAN")
+            self.assertEqual(object_list[0].type, "PEDESTRIAN")
+            self.assertEqual(object_list[1].type, "PEDESTRIAN")
+            self.assertEqual(object_list[2].type, "PEDESTRIAN")
+            self.assertEqual(object_list[3].type, "PEDESTRIAN")
+            self.assertEqual(object_list[4].type, "PEDESTRIAN")
+            self.assertEqual(object_list[5].type, "PEDESTRIAN")
+        finally:
+            # Restore original function to prevent affecting other tests
+            np.random.default_rng = original_default_rng
 
     def test_apply_list_inclusion_noise(self):
         object_list = [MagicMock(), MagicMock(), MagicMock()]
