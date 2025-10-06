@@ -111,7 +111,7 @@ class CarlaCDASimAPI:
 
         # Retrieve the CARLA sensor
         blueprint_library = self.__carla_world.get_blueprint_library()
-        sensor_bp = generate_lidar_bp(blueprint_library, carla_sensor_config)
+        sensor_bp = CarlaCDASimAPI.generate_lidar_bp(blueprint_library, carla_sensor_config)
         parent = None
         if parent_id is not None:
             parent = self.__carla_world.get_actor(parent_id)
@@ -140,7 +140,7 @@ class CarlaCDASimAPI:
         # Adding corresponding dummy lidar solely for visualization in Carla Viz
         # because semantic lidar sensor is not visualizable at the moment
         # https://github.com/usdot-fhwa-stol/carma-utils/issues/180
-        lidar_bp = generate_lidar_bp(blueprint_library, carla_sensor_config, "lidar")
+        lidar_bp = CarlaCDASimAPI.generate_lidar_bp(blueprint_library, carla_sensor_config, "lidar")
         lidar_spawn = self.__carla_world.spawn_actor(lidar_bp, sensor_transform)
         print(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
 
@@ -188,28 +188,28 @@ class CarlaCDASimAPI:
                         (scheduler, simulated_sensor, detection_cycle_delay_seconds))
         simulated_sensor.compute_detected_objects()
 
+    @staticmethod
+    def generate_lidar_bp(blueprint_library, carla_sensor_config, type=None):
+        """Build the CARLA blueprint necessary for CARLA sensor construction."""
+        if type is None:
+            lidar_bp = blueprint_library.find("sensor.lidar.ray_cast_semantic")
+        else:
+            lidar_bp = blueprint_library.filter(type)[0]
+        print("attempting to set bp attributes")
+        print(carla_sensor_config) # debug print
+        
+        # Check if 'horizontal_fov' is provided in the configuration, otherwise use a default.
+        if "horizontal_fov" in carla_sensor_config:
+            lidar_bp.set_attribute("horizontal_fov", str(carla_sensor_config["horizontal_fov"]))
+        else:
+            # Since older versions used upper/lower, we can set a default for 360-degree coverage
+            # or calculate a horizontal FOV based on existing parameters if a formula is available.
+            # For simplicity, we'll set a reasonable default.
+            lidar_bp.set_attribute("horizontal_fov", "360.0")
 
-def generate_lidar_bp(blueprint_library, carla_sensor_config, type= None):
-    """Build the CARLA blueprint necessary for CARLA sensor construction."""
-    if type is None:
-        lidar_bp = blueprint_library.find("sensor.lidar.ray_cast_semantic")
-    else:
-        lidar_bp = blueprint_library.filter(type)[0]
-    print("attempting to set bp attributes")
-    print(carla_sensor_config) # debug print
-    
-    # Check if 'horizontal_fov' is provided in the configuration, otherwise use a default.
-    if "horizontal_fov" in carla_sensor_config:
-        lidar_bp.set_attribute("horizontal_fov", str(carla_sensor_config["horizontal_fov"]))
-    else:
-        # Since older versions used upper/lower, we can set a default for 360-degree coverage
-        # or calculate a horizontal FOV based on existing parameters if a formula is available.
-        # For simplicity, we'll set a reasonable default.
-        lidar_bp.set_attribute("horizontal_fov", "360.0")
-
-    lidar_bp.set_attribute("channels", str(carla_sensor_config["channels"]))
-    lidar_bp.set_attribute("range", str(carla_sensor_config["range"])) # Note: range is now in meters
-    lidar_bp.set_attribute("rotation_frequency", str(1.0 / carla_sensor_config["rotation_period"]))
-    lidar_bp.set_attribute("points_per_second", str(carla_sensor_config["points_per_second"]))
-    
-    return lidar_bp
+        lidar_bp.set_attribute("channels", str(carla_sensor_config["channels"]))
+        lidar_bp.set_attribute("range", str(carla_sensor_config["range"])) # Note: range is now in meters
+        lidar_bp.set_attribute("rotation_frequency", str(1.0 / carla_sensor_config["rotation_period"]))
+        lidar_bp.set_attribute("points_per_second", str(carla_sensor_config["points_per_second"]))
+        
+        return lidar_bp

@@ -22,7 +22,7 @@ class SimulatedSensorTestUtils:
     def generate_simulated_sensor_config():
         return {
             "prefilter": {
-                "allowed_semantic_tags": ["Vehicles", "Pedestrians"],
+                "allowed_semantic_tags": ["CAR", "PEDESTRIAN", "VAN", "TRUCK", "MOTORCYCLE", "CYCLIST"],
                 "max_distance_meters": 42
             },
             "detection_threshold_scaling_formula": {
@@ -45,11 +45,14 @@ class SimulatedSensorTestUtils:
     @staticmethod
     def generate_lidar_sensor_config():
         return {
-            "horizontal_fov": 360.0,  # CARLA 0.10.0: replaces upper_fov/lower_fov
+            "horizontal_fov": 360.0,  # CARLA 0.10.0: horizontal FOV
+            "lower_fov": -30.0,  # Vertical FOV lower bound (still used for calculations)
+            "upper_fov": 10.0,   # Vertical FOV upper bound (still used for calculations)
             "channels": 60,
             "range": 100.0,
             "rotation_period": 0.05,
-            "points_per_second": 10000
+            "points_per_second": 10000,
+            "projection_string": "EPSG:3857"
         }
 
     @staticmethod
@@ -59,12 +62,18 @@ class SimulatedSensorTestUtils:
             "std_deviations": {
                 "position_in_meters": [0.8, 0.8, 0.8],
                 "orientation_in_radians": [0.1, 0.1, 0.1],
+                "linear_velocity_in_ms": [0.1, 0.1, 0.1],
+                "angular_velocity_in_rs": [0.1, 0.1, 0.1],
             },
             "stages": {
                 "position_noise": True,
                 "orientation_noise": True,
                 "type_noise": True,
-                "list_inclusion_noise": True
+                "list_inclusion_noise": True,
+                "position_covariance_noise": True,
+                "orientation_covariance_noise": True,
+                "linear_velocity_noise": True,
+                "angular_velocity_noise": True
             },
             "type_noise": {
                 "allowed_semantic_tags": [
@@ -103,10 +112,12 @@ class SimulatedSensorTestUtils:
             "horizontal_fov": 360,  # CARLA 0.10.0: replaces upper_fov/lower_fov  
             "channels": 32
         }
-        sensor_config.position = carla.Location(10.0, 15.0, 7.0)
+        sensor_config.position = carla.Location(1.0, 1.0, 0.0)
         rotation = carla.Rotation(0, 0, 0)
-        sensor_config.transform = MagicMock(
-            return_value=carla.Transform(carla.Location(10.0, 15.0, 7.0), rotation))
+        transform = carla.Transform(carla.Location(1.0, 1.0, 0.0), rotation)
+        sensor_config.transform = MagicMock(return_value=transform)
+        carla_sensor.get_transform = MagicMock(return_value=transform)
+        carla_sensor.get_location = MagicMock(return_value=carla.Location(1.0, 1.0, 0.0))
 
         return carla_sensor
 
@@ -116,7 +127,8 @@ class SimulatedSensorTestUtils:
         # Mock the carla.Actor class
         carla_actor = MagicMock()
         carla_actor.id = 0
-        carla_actor.attributes = dict()
+        carla_actor.attributes = {'base_type': 'car'}  # CARLA 0.10.0 base_type attribute
+        carla_actor.semantic_tags = [int(carla.CityObjectLabel.Car)]  # Add semantic tags for CARLA 0.10.0
         carla_actor.is_alive = True
         carla_actor.parent = None
         carla_actor.type_id = "vehicle.ford.mustang"
@@ -124,8 +136,19 @@ class SimulatedSensorTestUtils:
         extent = carla.Vector3D(2.94838892768239, 1.69796758051459, 1.0)
         location = carla.Location(20, 34.6410161513775, 0.0)
         rotation = carla.Rotation(3.0, 1.4, 4.0)
-        carla_actor.get_bounding_box = MagicMock(
-            return_value=MagicMock(extent=extent, location=location, rotation=rotation))
+        
+        # Mock bounding box with get_world_vertices method
+        mock_bbox = MagicMock()
+        mock_bbox.extent = extent
+        mock_bbox.location = location
+        mock_bbox.rotation = rotation
+        mock_bbox.get_world_vertices = MagicMock(return_value=[
+            carla.Location(1.0, 2.0, 3.0),
+            carla.Location(4.0, 5.0, 6.0),
+            carla.Location(7.0, 8.0, 9.0),
+            carla.Location(10.0, 11.0, 12.0)
+        ])
+        carla_actor.bounding_box = mock_bbox
 
         carla_actor.get_acceleration = MagicMock(return_value=carla.Vector3D(0.0, 0.0, 0.0))
         carla_actor.get_angular_velocity = MagicMock(return_value=carla.Vector3D(0.0, 0.0, 0.005))
@@ -137,17 +160,21 @@ class SimulatedSensorTestUtils:
 
         # Construct the DetectedObject
         simulated_sensor_config = SimulatedSensorTestUtils.generate_simulated_sensor_config()
-        detected_object = DetectedObjectBuilder.build_detected_object(carla_actor, simulated_sensor_config["prefilter"][
-            "allowed_semantic_tags"])
+        detected_object = DetectedObjectBuilder.build_detected_object(
+            carla_actor, 
+            simulated_sensor_config["prefilter"]["allowed_semantic_tags"],
+            "EPSG:3857",  # projection_string_config
+            "test_sensor_1"  # sensor_Id
+        )
 
         # Construct additional DetectedObject by adjustment
         return [
-            replace(detected_object, id=0, object_type="Vehicles"),
-            replace(detected_object, id=1, object_type="Pedestrians"),
-            replace(detected_object, id=2, object_type="Pedestrians"),
-            replace(detected_object, id=3, object_type="Pedestrians"),
-            replace(detected_object, id=4, object_type="Vehicles"),
-            replace(detected_object, id=5, object_type="Vehicles")
+            replace(detected_object, objectId=0, type="CAR"),
+            replace(detected_object, objectId=1, type="PEDESTRIAN"),
+            replace(detected_object, objectId=2, type="PEDESTRIAN"),
+            replace(detected_object, objectId=3, type="PEDESTRIAN"),
+            replace(detected_object, objectId=4, type="CAR"),
+            replace(detected_object, objectId=5, type="CAR")
         ]
 
     @staticmethod

@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
 
 #Set up the working directory
 WORKDIR /home/CarlaCDASimAdapter/
+ENV PYTHONPATH=/home/CarlaCDASimAdapter/src
 
 
 # Copy the correct CARLA .whl for Python 3.10 from PythonAPI/carla

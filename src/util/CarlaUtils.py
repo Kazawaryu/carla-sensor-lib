@@ -61,6 +61,19 @@ class CarlaUtils:
         return rotation_angles
 
     @staticmethod
+    def get_actor_rotation_matrix(carla_actor):
+        """
+        Get the rotation matrix for an actor.
+        :param carla_actor: The carla.Actor to obtain data from.
+        :return: 3x3 rotation matrix as numpy.array.
+        """
+        carla_rotation = carla_actor.get_transform().rotation
+        rotation_angles_deg = np.array([carla_rotation.roll, carla_rotation.pitch, carla_rotation.yaw])
+        rotation_angles = np.deg2rad(rotation_angles_deg)
+        rotation = Rotation.from_euler('xyz', rotation_angles)
+        return rotation.as_matrix()
+
+    @staticmethod
     def get_actor_bounding_box_points(carla_actor):
         """
         Get all corners for an actor's bounding box, in the world frame.
@@ -146,6 +159,92 @@ class CarlaUtils:
         :return: carla.Rotation object.
         """
         return carla.Rotation(pitch=rotation_vector[0], yaw=rotation_vector[1], roll=rotation_vector[2])
+
+    @staticmethod
+    def get_semantic_tag_name(tag_id):
+        """
+        Get the semantic tag name from a tag ID (CARLA 0.10.0).
+        :param tag_id: The semantic tag ID.
+        :return: The semantic tag name as a string.
+        """
+        # CARLA 0.10.0 semantic tag mapping
+        tag_map = {
+            0: "NONE",
+            1: "Roads",
+            2: "Sidewalks",
+            3: "Buildings",
+            4: "Walls",
+            5: "Fences",
+            6: "Poles",
+            7: "TrafficLight",
+            8: "TrafficSigns",
+            9: "Vegetation",
+            10: "Terrain",
+            11: "Sky",
+            12: "Pedestrians",
+            13: "Rider",
+            14: "Car",
+            15: "Truck",
+            16: "Bus",
+            17: "Train",
+            18: "Motorcycle",
+            19: "Bicycle",
+            20: "Static",
+            21: "Dynamic",
+            22: "Other",
+            23: "Water",
+            24: "RoadLines",
+            25: "Ground",
+            26: "Bridge",
+            27: "RailTrack",
+            28: "GuardRail",
+            255: "Any"
+        }
+        return tag_map.get(tag_id, "NONE")
+
+    @staticmethod
+    def get_semantic_tag_id(tag_name):
+        """
+        Get the semantic tag ID from a tag name (CARLA 0.10.0).
+        :param tag_name: The semantic tag name.
+        :return: The semantic tag ID as an integer.
+        """
+        # CARLA 0.10.0 semantic tag mapping
+        tag_map = {
+            "NONE": 0,
+            "Roads": 1,
+            "Sidewalks": 2,
+            "Buildings": 3,
+            "Walls": 4,
+            "Fences": 5,
+            "Poles": 6,
+            "TrafficLight": 7,
+            "TrafficSigns": 8,
+            "Vegetation": 9,
+            "Terrain": 10,
+            "Sky": 11,
+            "Pedestrians": 12,
+            "Rider": 13,
+            "Car": 14,
+            "Truck": 15,
+            "Bus": 16,
+            "Train": 17,
+            "Motorcycle": 18,
+            "Bicycle": 19,
+            "Static": 20,
+            "Dynamic": 21,
+            "Other": 22,
+            "Water": 23,
+            "RoadLines": 24,
+            "Ground": 25,
+            "Bridge": 26,
+            "RailTrack": 27,
+            "GuardRail": 28,
+            "Any": 255,
+            # Legacy support for "Vehicles" - map to Car
+            "Vehicles": 14
+        }
+        return tag_map.get(tag_name, 0)
 
     @staticmethod
     def get_actor(carla_world, actor_id):

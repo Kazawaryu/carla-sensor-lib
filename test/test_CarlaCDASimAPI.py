@@ -54,8 +54,8 @@ class TestCarlaCDASimAPI(unittest.TestCase):
 
     def test_create_simulated_semantic_lidar_sensor(self):
         # Values
-        infrastructure_id = 3
-        sensor_id = 7
+        infrastructure_id = "3"  # Must be string per API requirement
+        sensor_id = "7"  # Must be string per API requirement
         simulated_sensor_config = SimulatedSensorTestUtils.generate_simulated_sensor_config()
         carla_sensor_config = SimulatedSensorTestUtils.generate_lidar_sensor_config()
         noise_model_config = SimulatedSensorTestUtils.generate_noise_model_config()

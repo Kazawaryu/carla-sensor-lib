@@ -14,15 +14,22 @@ import unittest
 import argparse
 
 # Add the src directory to Python path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'test'))
+src_path = os.path.join(os.path.dirname(__file__), 'src')
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+# Add test directory to path
+test_path = os.path.join(os.path.dirname(__file__), 'test')
+if test_path not in sys.path:
+    sys.path.insert(0, test_path)
 
 
 def run_all_tests():
     """Run all unit tests in the test directory."""
     loader = unittest.TestLoader()
     start_dir = 'test'
-    suite = loader.discover(start_dir, pattern='test_*.py')
+    top_level_dir = os.path.dirname(__file__) or '.'
+    suite = loader.discover(start_dir, pattern='test*.py', top_level_dir=top_level_dir)
     
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)

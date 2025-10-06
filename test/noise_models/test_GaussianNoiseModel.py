@@ -41,28 +41,26 @@ class TestGaussianNoiseModel(unittest.TestCase):
         np.random.normal.assert_called_with(0.0, [0.8, 0.8, 0.8], size=3)
 
     def test_apply_orientation_noise(self):
+        # rotation should be a 1D array of [roll, pitch, yaw] in radians
         object_list = [
-            MagicMock(rotation=np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])),
-            MagicMock(rotation=np.array([[5.0, 6.0, 7.0], [5.0, 6.0, 7.0], [5.0, 6.0, 7.0], [5.0, 6.0, 7.0]]))]
+            MagicMock(rotation=np.array([1.0, 2.0, 3.0])),
+            MagicMock(rotation=np.array([5.0, 6.0, 7.0]))]
 
-        np.random.normal = MagicMock(
-            return_value=np.array([[0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]]))
+        np.random.normal = MagicMock(return_value=np.array([0.1, 0.1, 0.1]))
 
         noise_model = GaussianNoiseModel(self.config)
 
         noise_model.apply_orientation_noise(object_list)
 
-        self.assertEqual(object_list[0].rotation.tolist(),
-                         [[1.1, 2.1, 3.1], [1.1, 2.1, 3.1], [1.1, 2.1, 3.1], [1.1, 2.1, 3.1]])
-        self.assertEqual(object_list[1].rotation.tolist(),
-                         [[5.1, 6.1, 7.1], [5.1, 6.1, 7.1], [5.1, 6.1, 7.1], [5.1, 6.1, 7.1]])
+        self.assertEqual(object_list[0].rotation.tolist(), [1.1, 2.1, 3.1])
+        self.assertEqual(object_list[1].rotation.tolist(), [5.1, 6.1, 7.1])
 
         np.random.normal.assert_called_with(0.0, [0.1, 0.1, 0.1], size=3)
 
     def test_apply_type_noise(self):
         object_list = SimulatedSensorTestUtils.generate_test_data_detected_objects()
 
-        np.random.default_rng = MagicMock(return_value=MagicMock(choice=MagicMock(return_value=4)))
+        np.random.default_rng = MagicMock(return_value=MagicMock(choice=MagicMock(return_value="PEDESTRIAN")))
 
         noise_model = GaussianNoiseModel(self.config)
 

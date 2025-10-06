@@ -9,8 +9,13 @@
 import unittest
 from collections import deque
 from unittest.mock import MagicMock
+import sys
+import os
 
 import numpy as np
+
+# Add src to path for imports
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
 
 from collector.SensorDataCollector import SensorDataCollector
 
@@ -33,58 +38,81 @@ class TestSensorDataCollector(unittest.TestCase):
 
     def test__collect_sensor_data(self):
         # Call __collect_sensor_data
-        raw_sensor_data = MagicMock(horizontal_angle=1.0, raw_data=[
-            MagicMock(object_idx=0, point=MagicMock(x=0.0, y=0.0, z=0.0)),
+        # Note: object_idx=0 is skipped in the implementation (static objects)
+        detections = [
+            MagicMock(object_idx=0, point=MagicMock(x=0.0, y=0.0, z=0.0)),  # Will be skipped
             MagicMock(object_idx=1, point=MagicMock(x=1.0, y=1.0, z=1.0)),
             MagicMock(object_idx=2, point=MagicMock(x=2.0, y=2.0, z=2.0))
-        ])
+        ]
+        raw_sensor_data = MagicMock(
+            horizontal_angle=1.0,
+            raw_data=detections,
+            timestamp=0.0,
+            __iter__=lambda self: iter(detections)
+        )
         self.sensor_data_collector._SensorDataCollector__collect_sensor_data(raw_sensor_data)
 
         # Check if a new data collection is created and the raw_sensor_data is added to it
+        # Data is stored as dict mapping object_idx to list of points
         self.assertEqual(len(self.sensor_data_collector._SensorDataCollector__data), 2)
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][0], [0.0, 0.0, 0.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][1], [1.0, 1.0, 1.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][2], [2.0, 2.0, 2.0]))
+        self.assertTrue(1 in self.sensor_data_collector._SensorDataCollector__data[0])
+        self.assertTrue(2 in self.sensor_data_collector._SensorDataCollector__data[0])
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][1][0], [1.0, 1.0, 1.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][2][0], [2.0, 2.0, 2.0]))
         self.assertEqual(self.sensor_data_collector._SensorDataCollector__data[1], {})  # Prior
 
         # Call again with a data collection event in the same collection cycle (sensor_rotation_angle is increasing)
-        raw_sensor_data = MagicMock(horizontal_angle=2.0, raw_data=[
+        detections2 = [
             MagicMock(object_idx=3, point=MagicMock(x=3.0, y=3.0, z=3.0)),
             MagicMock(object_idx=4, point=MagicMock(x=4.0, y=4.0, z=4.0)),
             MagicMock(object_idx=5, point=MagicMock(x=5.0, y=5.0, z=5.0))
-        ])
+        ]
+        raw_sensor_data = MagicMock(
+            horizontal_angle=2.0,
+            raw_data=detections2,
+            timestamp=0.1,
+            __iter__=lambda self: iter(detections2)
+        )
         self.sensor_data_collector._SensorDataCollector__collect_sensor_data(raw_sensor_data)
 
         # Check that the data was appended to the collection
         self.assertEqual(len(self.sensor_data_collector._SensorDataCollector__data), 2)
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][0], [0.0, 0.0, 0.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][1], [1.0, 1.0, 1.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][2], [2.0, 2.0, 2.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][3], [3.0, 3.0, 3.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][4], [4.0, 4.0, 4.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][5], [5.0, 5.0, 5.0]))
+        # Check original data is still there
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][1][0], [1.0, 1.0, 1.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][2][0], [2.0, 2.0, 2.0]))
+        # Check new data was added
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][3][0], [3.0, 3.0, 3.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][4][0], [4.0, 4.0, 4.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][5][0], [5.0, 5.0, 5.0]))
         self.assertEqual(self.sensor_data_collector._SensorDataCollector__data[1], {})
 
         # Call again with a data collection event in the next collection cycle (sensor_rotation_angle is decreasing)
-        raw_sensor_data = MagicMock(horizontal_angle=0.0, raw_data=[
+        detections3 = [
             MagicMock(object_idx=6, point=MagicMock(x=6.0, y=6.0, z=6.0)),
             MagicMock(object_idx=7, point=MagicMock(x=7.0, y=7.0, z=7.0)),
             MagicMock(object_idx=8, point=MagicMock(x=8.0, y=8.0, z=8.0))
-        ])
+        ]
+        raw_sensor_data = MagicMock(
+            horizontal_angle=0.0,
+            raw_data=detections3,
+            timestamp=0.2,
+            __iter__=lambda self: iter(detections3)
+        )
         self.sensor_data_collector._SensorDataCollector__collect_sensor_data(raw_sensor_data)
 
         # Check that the new data was placed in a new collection
         self.assertEqual(len(self.sensor_data_collector._SensorDataCollector__data), 2)
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][0], [0.0, 0.0, 0.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][1], [1.0, 1.0, 1.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][2], [2.0, 2.0, 2.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][3], [3.0, 3.0, 3.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][4], [4.0, 4.0, 4.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][5], [5.0, 5.0, 5.0]))
+        # Previous data should now be in __data[1] (rotated)
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][1][0], [1.0, 1.0, 1.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][2][0], [2.0, 2.0, 2.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][3][0], [3.0, 3.0, 3.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][4][0], [4.0, 4.0, 4.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[1][5][0], [5.0, 5.0, 5.0]))
 
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][6], [6.0, 6.0, 6.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][7], [7.0, 7.0, 7.0]))
-        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][8], [8.0, 8.0, 8.0]))
+        # New data should be in __data[0] (current)
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][6][0], [6.0, 6.0, 6.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][7][0], [7.0, 7.0, 7.0]))
+        self.assertTrue(np.allclose(self.sensor_data_collector._SensorDataCollector__data[0][8][0], [8.0, 8.0, 8.0]))
 
     def test__is_same_data_collection(self):
         # Call __is_same_data_collection with a sensor_rotation_angle greater than prev_angle

@@ -520,7 +520,8 @@ class SemanticLidarSensor(SimulatedSensor):
                                     new_position[1],
                                     new_position[2],
                                     1.0])
-            new_position = np.matmul(inv_T, pos_in_map)
+            new_position_homogeneous = np.matmul(inv_T, pos_in_map)
+            new_position = new_position_homogeneous[0:3]  # Extract x, y, z from homogeneous coordinates
             sensor_rotation = self.__sensor.carla_sensor.get_transform().rotation
             new_rotation[0] -= math.radians(sensor_rotation.roll)
             new_rotation[1] -= math.radians(sensor_rotation.pitch)
