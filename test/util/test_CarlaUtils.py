@@ -12,6 +12,9 @@ from unittest.mock import MagicMock
 import carla
 import numpy as np
 from scipy.spatial.transform import Rotation
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
 
 from util.CarlaUtils import CarlaUtils
 
@@ -62,55 +65,51 @@ class TestCarlaUtils(unittest.TestCase):
         assert (result[3] == np.array([10.0, 11.0, 12.0])).all()
 
     def test_determine_object_type(self):
-        # Nominal case
-        carla_actor = MagicMock(semantic_tags=[10])
-        assert "Vehicles" == CarlaUtils.determine_object_type(carla_actor, ["Pedestrians", "Vehicles"])
+        # CARLA 0.10.0: Test with vehicle actor (type_id starts with "vehicle.")
+        carla_actor = MagicMock(type_id="vehicle.tesla.model3", attributes={'base_type': 'car'})
+        assert "CAR" == CarlaUtils.determine_object_type(carla_actor, ["PEDESTRIAN", "CAR"])
 
         # Multiple types
-        assert "Vehicles" == CarlaUtils.determine_object_type(carla_actor, ["NONE", "Vehicles"])
+        assert "CAR" == CarlaUtils.determine_object_type(carla_actor, ["NONE", "CAR"])
 
         # No allowed type
         assert "NONE" == CarlaUtils.determine_object_type(carla_actor, ["NONE"])
 
-        # NONE
-        carla_actor = MagicMock(semantic_tags=[9])
-        result = CarlaUtils.determine_object_type(carla_actor, ["Pedestrians", "Vehicles"])
+        # Test with pedestrian actor
+        carla_actor = MagicMock(type_id="walker.pedestrian.0001", attributes={})
+        result = CarlaUtils.determine_object_type(carla_actor, ["CAR", "BUILDINGS"])
         self.assertEqual(result, "NONE")
 
     def test_get_semantic_tag_name(self):
+        # CARLA 0.10.0 tag IDs
         assert CarlaUtils.get_semantic_tag_name(0) == "NONE"
-        assert CarlaUtils.get_semantic_tag_name(3) == "Other"
-        assert CarlaUtils.get_semantic_tag_name(4) == "Pedestrians"
-        assert CarlaUtils.get_semantic_tag_name(5) == "Poles"
-        assert CarlaUtils.get_semantic_tag_name(16) == "RailTrack"
-        assert CarlaUtils.get_semantic_tag_name(6) == "RoadLines"
-        assert CarlaUtils.get_semantic_tag_name(7) == "Roads"
-        assert CarlaUtils.get_semantic_tag_name(8) == "Sidewalks"
-        assert CarlaUtils.get_semantic_tag_name(13) == "Sky"
-        assert CarlaUtils.get_semantic_tag_name(19) == "Static"
-        assert CarlaUtils.get_semantic_tag_name(22) == "Terrain"
-        assert CarlaUtils.get_semantic_tag_name(18) == "TrafficLight"
-        assert CarlaUtils.get_semantic_tag_name(12) == "TrafficSigns"
-        assert CarlaUtils.get_semantic_tag_name(9) == "Vegetation"
-        assert CarlaUtils.get_semantic_tag_name(10) == "Vehicles"
-        assert CarlaUtils.get_semantic_tag_name(11) == "Walls"
-        assert CarlaUtils.get_semantic_tag_name(21) == "Water"
+        assert CarlaUtils.get_semantic_tag_name(1) == "Roads"
+        assert CarlaUtils.get_semantic_tag_name(2) == "Sidewalks"
+        assert CarlaUtils.get_semantic_tag_name(3) == "Buildings"
+        assert CarlaUtils.get_semantic_tag_name(6) == "Poles"
+        assert CarlaUtils.get_semantic_tag_name(11) == "Sky"
+        assert CarlaUtils.get_semantic_tag_name(12) == "Pedestrians"
+        assert CarlaUtils.get_semantic_tag_name(14) == "Car"
+        assert CarlaUtils.get_semantic_tag_name(20) == "Static"
+        assert CarlaUtils.get_semantic_tag_name(22) == "Other"
+        assert CarlaUtils.get_semantic_tag_name(23) == "Water"
+        assert CarlaUtils.get_semantic_tag_name(24) == "RoadLines"
+        assert CarlaUtils.get_semantic_tag_name(27) == "RailTrack"
 
     def test_get_semantic_tag_id(self):
+        # CARLA 0.10.0 tag IDs
         assert CarlaUtils.get_semantic_tag_id("NONE") == 0
-        assert CarlaUtils.get_semantic_tag_id("Other") == 3
-        assert CarlaUtils.get_semantic_tag_id("Pedestrians") == 4
-        assert CarlaUtils.get_semantic_tag_id("Poles") == 5
-        assert CarlaUtils.get_semantic_tag_id("RailTrack") == 16
-        assert CarlaUtils.get_semantic_tag_id("RoadLines") == 6
-        assert CarlaUtils.get_semantic_tag_id("Roads") == 7
-        assert CarlaUtils.get_semantic_tag_id("Sidewalks") == 8
-        assert CarlaUtils.get_semantic_tag_id("Sky") == 13
-        assert CarlaUtils.get_semantic_tag_id("Static") == 19
-        assert CarlaUtils.get_semantic_tag_id("Terrain") == 22
-        assert CarlaUtils.get_semantic_tag_id("TrafficLight") == 18
-        assert CarlaUtils.get_semantic_tag_id("TrafficSigns") == 12
-        assert CarlaUtils.get_semantic_tag_id("Vegetation") == 9
-        assert CarlaUtils.get_semantic_tag_id("Vehicles") == 10
-        assert CarlaUtils.get_semantic_tag_id("Walls") == 11
-        assert CarlaUtils.get_semantic_tag_id("Water") == 21
+        assert CarlaUtils.get_semantic_tag_id("Roads") == 1
+        assert CarlaUtils.get_semantic_tag_id("Sidewalks") == 2
+        assert CarlaUtils.get_semantic_tag_id("Buildings") == 3
+        assert CarlaUtils.get_semantic_tag_id("Poles") == 6
+        assert CarlaUtils.get_semantic_tag_id("Sky") == 11
+        assert CarlaUtils.get_semantic_tag_id("Pedestrians") == 12
+        assert CarlaUtils.get_semantic_tag_id("Car") == 14
+        assert CarlaUtils.get_semantic_tag_id("Static") == 20
+        assert CarlaUtils.get_semantic_tag_id("Other") == 22
+        assert CarlaUtils.get_semantic_tag_id("Water") == 23
+        assert CarlaUtils.get_semantic_tag_id("RoadLines") == 24
+        assert CarlaUtils.get_semantic_tag_id("RailTrack") == 27
+        # Legacy "Vehicles" should map to "Car"
+        assert CarlaUtils.get_semantic_tag_id("Vehicles") == 14

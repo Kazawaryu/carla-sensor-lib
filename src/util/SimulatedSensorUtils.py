@@ -45,6 +45,16 @@ class DetectedObjectEncoder(json.JSONEncoder):
         # Handle numpy.ndarray objects
         elif isinstance(obj, np.ndarray):
             return obj.tolist()
+        # Handle objects with __dict__ (serialize all attributes)
+        elif hasattr(obj, '__dict__'):
+            # Convert object attributes to dictionary, handling numpy arrays
+            obj_dict = {}
+            for key, value in obj.__dict__.items():
+                if isinstance(value, np.ndarray):
+                    obj_dict[key] = value.tolist()
+                else:
+                    obj_dict[key] = value
+            return obj_dict
         # Fallback to the base class default method for other types.
         return super(DetectedObjectEncoder, self).default(obj)
 

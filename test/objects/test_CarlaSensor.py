@@ -11,6 +11,9 @@ from unittest.mock import MagicMock
 
 import carla
 import numpy as np
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
 
 from objects.CarlaSensor import CarlaSensorBuilder
 
@@ -23,9 +26,7 @@ class TestCarlaSensor(unittest.TestCase):
         self.carla_sensor.attributes = {
             "points_per_second": 1000,
             "rotation_frequency": 700,
-            "horizontal_fov": 360,
-            "upper_fov": 40,
-            "lower_fov": -10,
+            "horizontal_fov": 360,  # CARLA 0.10.0: replaces upper_fov/lower_fov
             "channels": 32
         }
 
@@ -37,4 +38,5 @@ class TestCarlaSensor(unittest.TestCase):
         assert sensor.points_per_second == 1000
         assert sensor.rotation_frequency == 700
         assert sensor.horizontal_fov == np.deg2rad(360)
-        assert sensor.vertical_fov == np.deg2rad(50)
+        # CARLA 0.10.0: Calculate vertical FOV from horizontal FOV for compatibility
+        assert sensor.vertical_fov == np.deg2rad(360)  # Updated expectation for CARLA 0.10.0

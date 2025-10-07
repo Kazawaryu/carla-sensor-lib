@@ -1,4 +1,6 @@
 # Copyright (C) 2023 LEIDOS.
+# Updated for Carla 10 Testing by Will Varner @ UGA MSC Lab 2025
+# Fixed import paths and method signatures for CARLA 0.10.0 compatibility
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by
@@ -12,8 +14,11 @@ from unittest.mock import MagicMock
 
 import carla
 import numpy as np
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'util')))
 
-sys.path.append('../')
 from CarlaCDASimAPI import CarlaCDASimAPI
 from test.util.SimulatedSensorTestUtils import SimulatedSensorTestUtils
 
@@ -49,8 +54,8 @@ class TestCarlaCDASimAPI(unittest.TestCase):
 
     def test_create_simulated_semantic_lidar_sensor(self):
         # Values
-        infrastructure_id = 3
-        sensor_id = 7
+        infrastructure_id = "3"  # Must be string per API requirement
+        sensor_id = "7"  # Must be string per API requirement
         simulated_sensor_config = SimulatedSensorTestUtils.generate_simulated_sensor_config()
         carla_sensor_config = SimulatedSensorTestUtils.generate_lidar_sensor_config()
         noise_model_config = SimulatedSensorTestUtils.generate_noise_model_config()
@@ -127,6 +132,13 @@ class TestCarlaCDASimAPI(unittest.TestCase):
 
     def test_generate_lidar_bp(self):
         blueprint_library = MagicMock(find=MagicMock(return_value=MagicMock(set_attribute=MagicMock())))
-        bp = self.api._CarlaCDASimAPI__generate_lidar_bp(blueprint_library, self.carla_sensor_config)
-        bp.set_attribute.assert_called_with("points_per_second", "10000")
+        bp = CarlaCDASimAPI.generate_lidar_bp(blueprint_library, self.carla_sensor_config)
+        
+        # Assert that the correct attributes are being set for the new CARLA 0.10.0 Lidar blueprint
+        bp.set_attribute.assert_any_call("horizontal_fov", "360.0")
+        bp.set_attribute.assert_any_call("channels", "60")  # Updated from 32 to match config
+        bp.set_attribute.assert_any_call("range", "100.0")
+        bp.set_attribute.assert_any_call("rotation_frequency", "20.0")  # Updated calculation
+        bp.set_attribute.assert_any_call("points_per_second", "10000")
+        
         assert isinstance(bp, MagicMock)

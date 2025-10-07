@@ -1,4 +1,5 @@
 # Copyright (C) 2023 LEIDOS.
+# Ported to Carla 10 by Will Varner @ UGA MSC Lab 2025
 #
 # Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
 # the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by
@@ -147,12 +148,12 @@ class SemanticLidarSensor(SimulatedSensor):
                 for actor in actors]
 
         # Remove invalid objects
-        scene_objects = filter(lambda obj: obj is not None, scene_objects)
+        scene_objects = list(filter(lambda obj: obj is not None, scene_objects))
 
         # Remove sensor's parent object if detected (LIDAR sensor detecting car to which it is attached)
-        scene_objects = filter(lambda obj: obj.objectId != self.__parent_id, scene_objects)
+        scene_objects = list(filter(lambda obj: obj.objectId != self.__parent_id, scene_objects))
 
-        return list(scene_objects)
+        return scene_objects
 
     # ------------------------------------------------------------------------------
     # Prefilter
@@ -191,8 +192,7 @@ class SemanticLidarSensor(SimulatedSensor):
                 detected_objects))
 
         return detected_objects, object_ranges
-
-    # ------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
     # Computations
     # ------------------------------------------------------------------------------
 
@@ -307,10 +307,11 @@ class SemanticLidarSensor(SimulatedSensor):
         hitpoints_in_map_frame = []
 
         for hitpoint in hitpoints:
-            hitpoint_in_lidar_frame = carla.Location(hitpoint[0], hitpoint[1], hitpoint[2])
+            # hitpoint is a numpy array [x, y, z]
+            hitpoint_in_lidar_frame = hitpoint
             # transform function translates a 3D point from local to global
             # coordinates using the current transformation as frame of reference
-            hitpoint_in_map_frame = self.__sensor.carla_sensor.get_transform().transform(hitpoint_in_lidar_frame)
+            hitpoint_in_map_frame = self.__sensor.carla_sensor.get_transform().transform(carla.Location(x=hitpoint_in_lidar_frame[0], y=hitpoint_in_lidar_frame[1], z=hitpoint_in_lidar_frame[2]))
             new_pos = np.array([hitpoint_in_map_frame.x, hitpoint_in_map_frame.y, hitpoint_in_map_frame.z])
             hitpoints_in_map_frame.append(new_pos)
 
@@ -450,12 +451,12 @@ class SemanticLidarSensor(SimulatedSensor):
         :param actor_vertical_angular_extent: Actor's detected vertical field of view in radians.
         :return: Expected number of hitpoints in a scan across the specified field of view.
         """
+        # Replaced removed sensor attributes with values from the configuration dictionary
+        num_horizontal_points_per_scan = (self.__carla_sensor_config["points_per_second"] / self.__carla_sensor_config["rotation_period"]) / self.__carla_sensor_config["channels"]
+        horizontal_angular_resolution = math.radians(self.__carla_sensor_config["horizontal_fov"]) / num_horizontal_points_per_scan
 
-        num_horizontal_points_per_scan = (self.__sensor.points_per_second / self.__sensor.rotation_frequency) / self.__sensor.number_of_channels
-        horizontal_angular_resolution = self.__sensor.horizontal_fov / num_horizontal_points_per_scan
-
-        num_vertical_points_per_scan = self.__sensor.number_of_channels
-        vertical_angular_resolution = self.__sensor.vertical_fov / num_vertical_points_per_scan
+        num_vertical_points_per_scan = self.__carla_sensor_config["channels"]
+        vertical_angular_resolution = math.radians(self.__carla_sensor_config["upper_fov"] - self.__carla_sensor_config["lower_fov"]) / num_vertical_points_per_scan
 
         return (actor_horizontal_angular_extent / horizontal_angular_resolution) * (actor_vertical_angular_extent / vertical_angular_resolution)
 
@@ -519,26 +520,15 @@ class SemanticLidarSensor(SimulatedSensor):
                                     new_position[1],
                                     new_position[2],
                                     1.0])
-            new_position = np.matmul(inv_T, pos_in_map)
+            new_position_homogeneous = np.matmul(inv_T, pos_in_map)
+            new_position = new_position_homogeneous[0:3]  # Extract x, y, z from homogeneous coordinates
             sensor_rotation = self.__sensor.carla_sensor.get_transform().rotation
             new_rotation[0] -= math.radians(sensor_rotation.roll)
             new_rotation[1] -= math.radians(sensor_rotation.pitch)
             new_rotation[2] -= math.radians(sensor_rotation.yaw)
 
-        # CARLA 0.9.10 has a bug where the y-axis value is negated
-        # in reported objects positions and even lidar hitpoints.
-        # Therefore, all internal logic up until here works flawlessly
-        # just with negative Y value. However, just before reporting to
-        # external users, the Y value should be corrected.
-        # This was resolved in a later release, but CARMA currently
-        # uses 0.9.10. Remove this fix when CARMA upgrades to a
-        # newer CARLA version. Due to the error in position,
-        # velocity, rotation, and angularVelocity are all affected as well.
-
-        new_position[1] *= -1.0
-        new_velocity[1] *= -1.0
-        new_rotation[2] *= -1.0 #yaw
-        new_angularVelocity[2] *= -1.0 #yaw
+        # The bug where the y-axis was negated in CARLA 0.9.10 is fixed in 0.10.0 and later.
+        # The location provided by the XML-RPC client is now correct, so no negation is needed.
 
         return replace(obj,
                        timestamp=timestamp,

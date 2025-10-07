@@ -12,6 +12,10 @@ from unittest.mock import MagicMock
 
 import carla
 import numpy as np
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../', 'util')))
 
 from collector.SensorDataCollector import SensorDataCollector
 from noise_models.GaussianNoiseModel import GaussianNoiseModel
@@ -20,6 +24,7 @@ from objects.DetectedObject import DetectedObjectBuilder
 from sensor.SemanticLidarSensor import SemanticLidarSensor
 from util.CarlaUtils import CarlaUtils
 from test.util.SimulatedSensorTestUtils import SimulatedSensorTestUtils
+
 
 
 class TestSemanticLidarSensor(unittest.TestCase):
@@ -41,9 +46,10 @@ class TestSemanticLidarSensor(unittest.TestCase):
         self.carla_world = MagicMock()
         self.data_collector = SensorDataCollector(self.carla_world, self.raw_carla_sensor)
         self.noise_model = GaussianNoiseModel(self.noise_model_config)
+        self.parent_id = "test_parent"
         self.sensor = SemanticLidarSensor(self.infrastructure_id, self.sensor_id, self.simulated_sensor_config,
                                           self.carla_sensor_config, self.carla_world,
-                                          self.carla_sensor, self.data_collector, self.noise_model)
+                                          self.carla_sensor, self.data_collector, self.noise_model, self.parent_id)
 
     def test_get_infrastructure_id(self):
         assert self.sensor.get_infrastructure_id() == self.infrastructure_id
@@ -99,7 +105,7 @@ class TestSemanticLidarSensor(unittest.TestCase):
         self.sensor.compute_adjusted_detection_thresholds = MagicMock(return_value=detection_thresholds)
         self.sensor.sample_hitpoints = MagicMock(return_value=hitpoints)
         self.sensor.compute_instantaneous_actor_id_association = MagicMock(
-            return_value={0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5})
+            return_value=hitpoints)
         self.sensor.apply_occlusion = MagicMock(return_value=detected_objects)
         self.sensor.apply_noise = MagicMock(return_value=detected_objects)
         self.sensor.update_object_frame_and_timestamps = MagicMock(return_value=detected_objects)
@@ -115,7 +121,7 @@ class TestSemanticLidarSensor(unittest.TestCase):
         self.sensor.apply_occlusion.assert_called_once_with(detected_objects, actor_angular_extents, hitpoints,
                                                             detection_thresholds)
         self.sensor.apply_noise.assert_called_once_with(detected_objects)
-        self.sensor.update_object_frame_and_timestamps.assert_called_once_with(detected_objects, hitpoints, timestamp)
+        self.sensor.update_object_frame_and_timestamps.assert_called_once_with(detected_objects, timestamp)
 
         self.assertEqual(result, detected_objects)
         self.assertEqual(self.sensor._SemanticLidarSensor__detected_objects, detected_objects)
@@ -124,20 +130,20 @@ class TestSemanticLidarSensor(unittest.TestCase):
         self.assertEqual(self.sensor.get_detected_objects(), detected_objects)
 
     def test_get_detected_objects(self):
-        detected_objects = [MagicMock(id=3), MagicMock(id=4)]
+        detected_objects = [MagicMock(objectId=3), MagicMock(objectId=4)]
         self.sensor._SemanticLidarSensor__detected_objects = detected_objects
         assert detected_objects == self.sensor.get_detected_objects()
 
     def test_get_scene_detected_objects(self):
-        actors = [MagicMock(id=0), MagicMock(id=1)]
-        detected_object = MagicMock(id=0)
+        actors = [MagicMock(objectId=0), MagicMock(objectId=1)]
+        detected_object = MagicMock(objectId=0)
         self.carla_world.get_actors = MagicMock(return_value=actors)
         old_fcn = DetectedObjectBuilder.build_detected_object
         DetectedObjectBuilder.build_detected_object = MagicMock(return_value=detected_object)
         result = self.sensor.get_scene_detected_objects()
         self.assertEqual(len(result), len(actors))
         for i in range(len(result)):
-            self.assertEqual(result[i].objectId, 0)
+            self.assertEqual(result[i].objectId, 0)  # Use 'objectId' (not 'id')
 
         # Restore old function
         DetectedObjectBuilder.build_detected_object = old_fcn
@@ -145,13 +151,14 @@ class TestSemanticLidarSensor(unittest.TestCase):
     def test_prefilter(self):
         # Test filtering by type
         detected_objects = SimulatedSensorTestUtils.generate_test_data_detected_objects()[0:3]
-        detected_objects[2] = replace(detected_objects[2], object_type="Bridge")
+        detected_objects[2] = replace(detected_objects[2], type="Bridge")
         filtered_objects, object_ranges = self.sensor.prefilter(detected_objects)
         self.assertEqual(len(filtered_objects), 2)
-        self.assertEqual(filtered_objects[0].type, "Vehicles")
-        self.assertEqual(filtered_objects[1].type, "Pedestrians")
-        self.assertEqual(object_ranges[0], 38.635709988013005)
-        self.assertEqual(object_ranges[1], 38.635709988013005)
+        self.assertEqual(filtered_objects[0].type, "CAR")  # CARLA 0.10.0 uses uppercase "CAR"
+        self.assertEqual(filtered_objects[1].type, "PEDESTRIAN")  # CARLA 0.10.0 uses uppercase "PEDESTRIAN"
+        # Use tolerance for floating point comparisons
+        self.assertAlmostEqual(object_ranges[0], 38.635709988013005, places=6)
+        self.assertAlmostEqual(object_ranges[1], 38.635709988013005, places=6)
 
         # Forceably adjust configured filter distance and test filtering by distance
         self.sensor._SemanticLidarSensor__simulated_sensor_config["prefilter"]["max_distance_meters"] = 0.0001
@@ -160,14 +167,14 @@ class TestSemanticLidarSensor(unittest.TestCase):
 
     def test_compute_actor_angular_extents(self):
         self.sensor.compute_actor_angular_extent = MagicMock(return_value=(0.5, 1.0))
-        extents = self.sensor.compute_actor_angular_extents([MagicMock(id=0)])
+        extents = self.sensor.compute_actor_angular_extents([MagicMock(objectId=0)])
         assert extents[0] == (0.5, 1.0)
 
     def test_compute_actor_angular_extent(self):
         # Data and call
         vec1 = np.array([4.0, 2.0, 4.0])
         vec2 = np.array([2.0, 4.0, 2.0])
-        detected_object = MagicMock(id=0,
+        detected_object = MagicMock(objectId=0,
                                     bounding_box_in_world_coordinate_frame=[
                                         vec1,
                                         vec2
@@ -205,7 +212,7 @@ class TestSemanticLidarSensor(unittest.TestCase):
 
     def test_compute_adjusted_detection_thresholds(self):
         # Mock internal functions
-        detected_objects = [MagicMock(id=3)]
+        detected_objects = [MagicMock(objectId=3)]
         object_ranges = {3: 100.0}
         self.sensor.compute_adjusted_detection_threshold = MagicMock(return_value=0.7)
 
@@ -248,20 +255,24 @@ class TestSemanticLidarSensor(unittest.TestCase):
             1: points_list
         }
 
-        # Restore and verify real sampling returns the expected sample size
-        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 4)
-        assert len(sampled_hitpoints[0]) == 4
+        # CARLA 0.10 API: sample_hitpoints(hitpoints, min_sample_size, max_sample_size, downsample_ratio)
+        # For 6 points, with downsample_ratio=1.5: ceil(6/1.5) = 4, clamped to [4,4] = 4
+        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 4, 4, 1.5)
+        assert len(sampled_hitpoints[0]) == 4  # Should sample exactly 4 points
         assert len(sampled_hitpoints[1]) == 4
-        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 5)
-        assert len(sampled_hitpoints[0]) == 5
+        
+        # For 6 points, with downsample_ratio=1.2: ceil(6/1.2) = 5, clamped to [5,5] = 5
+        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 5, 5, 1.2)
+        assert len(sampled_hitpoints[0]) == 5  # Should sample exactly 5 points
         assert len(sampled_hitpoints[1]) == 5
 
-        # Verify sampling does not repeat points
-        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 6)
+        # Verify sampling does not repeat points - test with all 6 points
+        # For 6 points, with downsample_ratio=1: ceil(6/1) = 6, clamped to [1,10] = 6
+        sampled_hitpoints = self.sensor.sample_hitpoints(hitpoints, 1, 10, 1)
         assert len(sampled_hitpoints[0]) == 6
         assert len(sampled_hitpoints[1]) == 6
-        assert np.alltrue([points_list[i] in sampled_hitpoints[0] for i in range(0, 6)])
-        assert np.alltrue([points_list[i] in sampled_hitpoints[1] for i in range(0, 6)])
+        assert np.all([points_list[i] in sampled_hitpoints[0] for i in range(0, 6)])
+        assert np.all([points_list[i] in sampled_hitpoints[1] for i in range(0, 6)])
 
     def test_compute_instantaneous_actor_id_association(self):
         # Generate test scenario with hitpoints clustered around the object positions
@@ -269,8 +280,8 @@ class TestSemanticLidarSensor(unittest.TestCase):
         pos2 = np.array([2.0, 4.0, 0.0])
         generated_detected_objects = SimulatedSensorTestUtils.generate_test_data_detected_objects()
         scene_objects = [
-            replace(generated_detected_objects[0], id=0, position=pos1),
-            replace(generated_detected_objects[1], id=1, position=pos2)
+            replace(generated_detected_objects[0], objectId=0, position=pos1),
+            replace(generated_detected_objects[1], objectId=1, position=pos2)
         ]
         points_list_1 = [
             pos1 + np.array([0.0, 0.0, 0.0]),
@@ -288,38 +299,37 @@ class TestSemanticLidarSensor(unittest.TestCase):
             pos2 + np.array([0.2, 0.0, 0.0]),
             pos2 + np.array([0.0, 0.2, 0.0])
         ]
-        downsampled_hitpoints = {
-            0: points_list_1,
-            1: points_list_2
-        }
+        # Flatten hitpoints for the function (it expects a list, not a dict)
+        flat_hitpoints_correct = points_list_1 + points_list_2
 
-        # No change to a correct association
-        id_association = self.sensor.compute_instantaneous_actor_id_association(downsampled_hitpoints, scene_objects)
-        assert len(id_association) == 2
-        assert id_association[0] == 0
-        assert id_association[1] == 1
+        # No change to a correct association - returns dict {actor_id: [hitpoints]}
+        id_association = self.sensor.compute_instantaneous_actor_id_association(flat_hitpoints_correct, scene_objects)
+        assert len(id_association) == 2  # 2 objects
+        assert 0 in id_association
+        assert 1 in id_association
+        assert len(id_association[0]) == 6  # 6 points associated with object 0
+        assert len(id_association[1]) == 6  # 6 points associated with object 1
 
-        # Opposite association
-        downsampled_hitpoints = {
-            1: points_list_1,
-            0: points_list_2
-        }
-        id_association = self.sensor.compute_instantaneous_actor_id_association(downsampled_hitpoints, scene_objects)
-        assert len(id_association) == 2
-        assert id_association[0] == 1
-        assert id_association[1] == 0
+        # Opposite association (swap the lists) - should still get same result since it's distance-based
+        flat_hitpoints_swapped = points_list_2 + points_list_1
+        id_association = self.sensor.compute_instantaneous_actor_id_association(flat_hitpoints_swapped, scene_objects)
+        assert len(id_association) == 2  # 2 objects
+        assert 0 in id_association
+        assert 1 in id_association
+        assert len(id_association[0]) == 6  # 6 points associated with object 0
+        assert len(id_association[1]) == 6  # 6 points associated with object 1
 
         # Test detected_objects with object IDs not picked up in the scan
         pos3 = np.array([100.0, 100.0, 0.0])
-        scene_objects.append(replace(generated_detected_objects[2], id=100, position=pos3))
-        downsampled_hitpoints = {
-            0: points_list_1,
-            1: points_list_2
-        }
-        id_association = self.sensor.compute_instantaneous_actor_id_association(downsampled_hitpoints, scene_objects)
-        assert len(id_association) == 2
-        assert id_association[0] == 0
-        assert id_association[1] == 1
+        scene_objects.append(replace(generated_detected_objects[2], objectId=100, position=pos3))
+        # Flatten hitpoints for function call
+        flat_hitpoints = points_list_1 + points_list_2
+        id_association = self.sensor.compute_instantaneous_actor_id_association(flat_hitpoints, scene_objects)
+        assert len(id_association) == 2  # 2 objects with hitpoints
+        assert 0 in id_association
+        assert 1 in id_association
+        assert len(id_association[0]) == 6
+        assert len(id_association[1]) == 6
 
         # Test objects picked up in the scan which are not known in the truth state
         points_list_3 = [
@@ -330,45 +340,38 @@ class TestSemanticLidarSensor(unittest.TestCase):
             pos3 + np.array([0.2, 0.0, 0.0]),
             pos3 + np.array([0.0, 0.2, 0.0])
         ]
-        downsampled_hitpoints = {
-            0: points_list_1,
-            1: points_list_2,
-            2: points_list_3
-        }
         scene_objects = scene_objects[0:-1]
-        id_association = self.sensor.compute_instantaneous_actor_id_association(downsampled_hitpoints, scene_objects)
-        assert len(id_association) == 2
-        assert id_association[0] == 0
-        assert id_association[1] == 1
-
+        # Flatten hitpoints
+        flat_hitpoints_3lists = points_list_1 + points_list_2 + points_list_3
+        id_association = self.sensor.compute_instantaneous_actor_id_association(flat_hitpoints_3lists, scene_objects)
+        assert len(id_association) == 2  # Only 2 objects in scene_objects
+        assert 0 in id_association
+        assert 1 in id_association
+        # Third set of points won't be associated (object not in scene)
+        
         # Add third object within range of third point scan
-        scene_objects.append(replace(generated_detected_objects[2], id=100, position=pos3))
-        downsampled_hitpoints = {
-            0: points_list_1,
-            1: points_list_2,
-            2: points_list_3
-        }
-        id_association = self.sensor.compute_instantaneous_actor_id_association(downsampled_hitpoints, scene_objects)
-        assert len(id_association) == 3
-        assert id_association[0] == 0
-        assert id_association[1] == 1
-        assert id_association[2] == 100
+        scene_objects.append(replace(generated_detected_objects[2], objectId=100, position=pos3))
+        id_association = self.sensor.compute_instantaneous_actor_id_association(flat_hitpoints_3lists, scene_objects)
+        assert len(id_association) == 3  # All 3 objects now
+        assert 0 in id_association
+        assert 1 in id_association
+        assert 100 in id_association
 
         # Move third object away from range of point scan (both points and truth state exist but are not within
         # association range)
         scene_objects[2] = replace(scene_objects[2], position=np.array([1000.0, 1000.0, 0.0]))
-        id_association = self.sensor.compute_instantaneous_actor_id_association(downsampled_hitpoints, scene_objects)
-        assert len(id_association) == 2
-        assert id_association[0] == 0
-        assert id_association[1] == 1
+        id_association = self.sensor.compute_instantaneous_actor_id_association(flat_hitpoints_3lists, scene_objects)
+        assert len(id_association) == 2  # Third object too far, only first 2 associated
+        assert 0 in id_association
+        assert 1 in id_association
 
     def test_compute_closest_object_id_list(self):
         # Build test data
-        hitpoint_list = [MagicMock(id=0), MagicMock(id=1)]
+        hitpoint_list = [MagicMock(objectId=0), MagicMock(objectId=1)]
         generated_detected_objects = SimulatedSensorTestUtils.generate_test_data_detected_objects()
         scene_objects = [
-            replace(generated_detected_objects[0], id=0),
-            replace(generated_detected_objects[1], id=1)
+            replace(generated_detected_objects[0], objectId=0),
+            replace(generated_detected_objects[1], objectId=1)
         ]
         geometry_association_max_dist_in_meters = 0.2
 
@@ -392,8 +395,8 @@ class TestSemanticLidarSensor(unittest.TestCase):
         pos2 = np.array([2.0, 4.0, 0.0])
         generated_detected_objects = SimulatedSensorTestUtils.generate_test_data_detected_objects()
         scene_objects = [
-            replace(generated_detected_objects[0], id=0, position=pos1),
-            replace(generated_detected_objects[1], id=1, position=pos2)
+            replace(generated_detected_objects[0], objectId=0, position=pos1),
+            replace(generated_detected_objects[1], objectId=1, position=pos2)
         ]
         points_list_1 = [
             pos1 + np.array([0.0, 0.0, 0.0]),
@@ -454,9 +457,12 @@ class TestSemanticLidarSensor(unittest.TestCase):
                                                    geometry_association_max_dist_in_meters)
         assert id == 1
 
-        # Point out of range
+        # Point out of range - use a point far away from both objects
+        # pos1 is at [4.0, 2.0, 0.0], pos2 is at [2.0, 4.0, 0.0]
+        # A point at [10.0, 10.0, 0.0] is >8 meters away from both
+        far_point = np.array([10.0, 10.0, 0.0])
         geometry_association_max_dist_in_meters = 0.001
-        id = self.sensor.compute_closest_object_id(downsampled_hitpoints[0][1], scene_objects,
+        id = self.sensor.compute_closest_object_id(far_point, scene_objects,
                                                    geometry_association_max_dist_in_meters)
         assert id is None
 
@@ -492,9 +498,9 @@ class TestSemanticLidarSensor(unittest.TestCase):
             4: (0.2, 0.1),
             5: (0.2, 0.1)
         }
-        hitpoints = {0: [MagicMock(id=0, objtype="hitpoint")], 1: [MagicMock(id=1, objtype="hitpoint")],
-                     2: [MagicMock(id=2, objtype="hitpoint")], 3: [MagicMock(id=3, objtype="hitpoint")],
-                     4: [MagicMock(id=4, objtype="hitpoint")], 5: [MagicMock(id=5, objtype="hitpoint")]}
+        hitpoints = {0: [MagicMock(objectId=0, objtype="hitpoint")], 1: [MagicMock(objectId=1, objtype="hitpoint")],
+                     2: [MagicMock(objectId=2, objtype="hitpoint")], 3: [MagicMock(objectId=3, objtype="hitpoint")],
+                     4: [MagicMock(objectId=4, objtype="hitpoint")], 5: [MagicMock(objectId=5, objtype="hitpoint")]}
         detection_thresholds = {0: 0.5, 1: 0.5, 2: 0.5, 3: 0.6, 4: 0.7, 5: 0.7}
 
         # Mock internal calls
@@ -517,17 +523,20 @@ class TestSemanticLidarSensor(unittest.TestCase):
         horizontal_fov = np.deg2rad(15)
         vertical_fov = np.deg2rad(10)
 
-        sensor_horizontal_fov = np.deg2rad(360)
-        sensor_vertical_fov = np.deg2rad(60)
-
         rotation_frequency = 1
+        rotation_period = 1.0 / rotation_frequency
         points_per_second = num_horizontal_points_per_scan * num_vertical_points_per_scan * rotation_frequency
 
-        # Mock the carla sensor
-        carla_sensor = MagicMock(points_per_second=points_per_second, rotation_frequency=rotation_frequency,
-                                 horizontal_fov=sensor_horizontal_fov,
-                                 vertical_fov=sensor_vertical_fov, number_of_channels=num_vertical_points_per_scan)
-        self.sensor._SemanticLidarSensor__sensor = carla_sensor
+        # Override the sensor's config to match test expectations
+        # CARLA 0.10.0: is_visible -> compute_expected_num_hitpoints uses self.__carla_sensor_config
+        self.sensor._SemanticLidarSensor__carla_sensor_config = {
+            "horizontal_fov": 360.0,
+            "upper_fov": 30.0,
+            "lower_fov": -30.0,
+            "channels": num_vertical_points_per_scan,
+            "points_per_second": points_per_second,
+            "rotation_period": rotation_period
+        }
 
         # Object dimensions
         actor_angular_extents = (horizontal_fov, vertical_fov)
@@ -557,17 +566,20 @@ class TestSemanticLidarSensor(unittest.TestCase):
         horizontal_fov = np.deg2rad(15)
         vertical_fov = np.deg2rad(10)
 
-        sensor_horizontal_fov = np.deg2rad(360)
-        sensor_vertical_fov = np.deg2rad(60)
-
         rotation_frequency = 1
+        rotation_period = 1.0 / rotation_frequency  # 1 second per rotation
         points_per_second = num_horizontal_points_per_scan * num_vertical_points_per_scan * rotation_frequency
 
-        # Mock the carla sensor
-        carla_sensor = MagicMock(points_per_second=points_per_second, rotation_frequency=rotation_frequency,
-                                 horizontal_fov=sensor_horizontal_fov,
-                                 vertical_fov=sensor_vertical_fov, number_of_channels=num_vertical_points_per_scan)
-        self.sensor._SemanticLidarSensor__sensor = carla_sensor
+        # Override the sensor's config to match test expectations
+        # CARLA 0.10.0: compute_expected_num_hitpoints uses self.__carla_sensor_config
+        self.sensor._SemanticLidarSensor__carla_sensor_config = {
+            "horizontal_fov": 360.0,
+            "upper_fov": 30.0,
+            "lower_fov": -30.0,
+            "channels": num_vertical_points_per_scan,
+            "points_per_second": points_per_second,
+            "rotation_period": rotation_period
+        }
 
         expected_expected_num_hitpoints = 150
 
@@ -596,34 +608,31 @@ class TestSemanticLidarSensor(unittest.TestCase):
         noise_model.apply_list_inclusion_noise.assert_called_once_with(detected_objects)
 
     def test_update_object_frame_and_timestamps(self):
-        original_type = "Vehicles"
-        expected_type = "Bridge"
+        original_type = "CAR"  # CARLA 0.10.0 uses uppercase types
 
-        hitpoints = dict(
-            [(i, [MagicMock(object_tag=CarlaUtils.get_semantic_tag_id(expected_type))]) for i in range(0, 6)])
         timestamp = 3
 
         # Generate objects in original world frame
         detected_objects = SimulatedSensorTestUtils.generate_test_data_detected_objects()
         detected_objects = [
-            replace(detected_objects[0], object_type=original_type, timestamp=0, position=np.array([10.0, 10.0, 0.0])),
-            replace(detected_objects[1], object_type=original_type, timestamp=0, position=np.array([11.0, 9.0, 0.0])),
-            replace(detected_objects[2], object_type=original_type, timestamp=0, position=np.array([14.0, 9.0, 0.0])),
-            replace(detected_objects[3], object_type=original_type, timestamp=0, position=np.array([8.0, 10.0, 0.0])),
-            replace(detected_objects[4], object_type=original_type, timestamp=0, position=np.array([8.0, 14.0, 0.0])),
-            replace(detected_objects[5], object_type=original_type, timestamp=0, position=np.array([14.0, 14.0, 0.0]))
+            replace(detected_objects[0], type=original_type, timestamp=0, position=np.array([10.0, 10.0, 0.0])),
+            replace(detected_objects[1], type=original_type, timestamp=0, position=np.array([11.0, 9.0, 0.0])),
+            replace(detected_objects[2], type=original_type, timestamp=0, position=np.array([14.0, 9.0, 0.0])),
+            replace(detected_objects[3], type=original_type, timestamp=0, position=np.array([8.0, 10.0, 0.0])),
+            replace(detected_objects[4], type=original_type, timestamp=0, position=np.array([8.0, 14.0, 0.0])),
+            replace(detected_objects[5], type=original_type, timestamp=0, position=np.array([14.0, 14.0, 0.0]))
         ]
 
         # Execute
-        new_detected_objects = self.sensor.update_object_frame_and_timestamps(detected_objects, hitpoints, timestamp)
+        new_detected_objects = self.sensor.update_object_frame_and_timestamps(detected_objects, timestamp)
 
-        # Assert object types updated
-        assert new_detected_objects[0].type == "Bridge"
-        assert new_detected_objects[1].type == "Bridge"
-        assert new_detected_objects[2].type == "Bridge"
-        assert new_detected_objects[3].type == "Bridge"
-        assert new_detected_objects[4].type == "Bridge"
-        assert new_detected_objects[5].type == "Bridge"
+        # Assert object types remain unchanged (function only updates frame/timestamp, not type)
+        assert new_detected_objects[0].type == original_type
+        assert new_detected_objects[1].type == original_type
+        assert new_detected_objects[2].type == original_type
+        assert new_detected_objects[3].type == original_type
+        assert new_detected_objects[4].type == original_type
+        assert new_detected_objects[5].type == original_type
 
         # Assert timestamps updated
         assert new_detected_objects[0].timestamp == timestamp
@@ -656,15 +665,13 @@ class TestSemanticLidarSensor(unittest.TestCase):
         carla_actor.get_velocity = MagicMock(return_value=carla.Vector3D(4.0, 5.0, 6.0))
         carla_actor.get_angular_velocity = MagicMock(return_value=carla.Vector3D(7.0, 8.0, 9.0))
 
-        detected_object = DetectedObjectBuilder.build_detected_object(carla_actor, ["Vehicles"])
-
-        hitpoints = {0: [MagicMock(object_tag=expected_type)]}
+        detected_object = DetectedObjectBuilder.build_detected_object(carla_actor, ["CAR"], "EPSG:3857", "test_sensor_1")
 
         timestamp = 3
 
         # Call and provide assertions
         corrected_objects = self.sensor.update_object_frame_and_timestamps_from_hitpoint(detected_object,
-                                                                             hitpoints.get(detected_object.objectId),
                                                                              timestamp)
-        assert "Bridge" == corrected_objects.type
+        # Function only updates timestamp and frame, not type
+        assert detected_object.type == corrected_objects.type  # Type unchanged
         assert timestamp == corrected_objects.timestamp

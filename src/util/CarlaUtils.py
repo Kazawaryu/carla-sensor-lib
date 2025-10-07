@@ -16,16 +16,9 @@ class CarlaUtils:
     Generic CARLA utility functions.
     """
 
-    #CARLA 0.9.10 type lookup table for van, cycle, motorcycle, truck
-    vehicle_lookup_table = {'carlacola': "TRUCK", 
-                            'cybertruck': "TRUCK", 
-                            't2': "VAN", 
-                            'low_rider': "MOTORCYCLE",
-                            'ninja': "MOTORCYCLE",
-                            'yzf': "MOTORCYCLE",
-                            'crossbike': "CYCLIST",
-                            'century': "CYCLIST",
-                            'omafiets': "CYCLIST"}
+        #CARLA 0.10 type lookup table for van, cycle, motorcycle, truck
+    # This is because the type_id strings for these vehicles were not standardized.
+    # The new 'base_type' attribute in CARLA 0.10.0 provides a more robust way to classify vehicles.
 
     @staticmethod
     def vector3d_to_numpy(vec):
@@ -68,6 +61,19 @@ class CarlaUtils:
         return rotation_angles
 
     @staticmethod
+    def get_actor_rotation_matrix(carla_actor):
+        """
+        Get the rotation matrix for an actor.
+        :param carla_actor: The carla.Actor to obtain data from.
+        :return: 3x3 rotation matrix as numpy.array.
+        """
+        carla_rotation = carla_actor.get_transform().rotation
+        rotation_angles_deg = np.array([carla_rotation.roll, carla_rotation.pitch, carla_rotation.yaw])
+        rotation_angles = np.deg2rad(rotation_angles_deg)
+        rotation = Rotation.from_euler('xyz', rotation_angles)
+        return rotation.as_matrix()
+
+    @staticmethod
     def get_actor_bounding_box_points(carla_actor):
         """
         Get all corners for an actor's bounding box, in the world frame.
@@ -78,7 +84,7 @@ class CarlaUtils:
         try:
             bounding_box = carla_actor.bounding_box
         except AttributeError:
-            raise AttributeError("There is no bounding_box attribute, in 0.9.10 only Pedestrian and Vehicles have this attribute, please check the input...")
+            raise AttributeError("There is no bounding_box attribute, in 0.10 only Pedestrian and Vehicles have this attribute, please check the input...")
 
         bounding_box_locations = bounding_box.get_world_vertices(carla_actor.get_transform())
         return [CarlaUtils.vector3d_to_numpy(location) for location in bounding_box_locations]
@@ -91,22 +97,24 @@ class CarlaUtils:
         :param allowed_semantic_tags: List of semantic tags which are allowed to be detected by the sensor.
         :return: The object type, or NONE if not in the allowed list.
         """
-        #using type_id instead of semantic_tags
-        #issue with semantic_tags in version 0.9.10:https://github.com/carla-simulator/carla/issues/2161
-
-        temp_id_list =  carla_actor.type_id.split(".")
-        temp_id = temp_id_list[0]
-        if temp_id == "vehicle":
-            vehicle_type = temp_id_list[2]
-            #for object_type other than CAR
-            if vehicle_type in CarlaUtils.vehicle_lookup_table.keys():
-                return CarlaUtils.vehicle_lookup_table[vehicle_type]
+        # The vehicle lookup table and logic based on type_id has been replaced.
+        # CARLA 0.10.0 provides a more robust 'base_type' attribute on the vehicle blueprint.
+        # This new attribute provides a standard vehicle classification.
+        # 
+        actor_type = "NONE"
+        if carla_actor.type_id.startswith("vehicle."):
+            # New vehicles in CARLA 0.10.0 have a 'base_type' attribute
+            if 'base_type' in carla_actor.attributes:
+                actor_type = carla_actor.attributes['base_type'].upper()
             else:
-                return "CAR"
-        elif temp_id == "walker":
-            return "PEDESTRIAN"
-        else:
-            return "NONE"
+                # Fallback for older vehicles that might still exist
+                actor_type = "CAR"
+        elif carla_actor.type_id.startswith("walker."):
+            actor_type = "PEDESTRIAN"
+        elif carla_actor.type_id.startswith("traffic."):
+            actor_type = "TRAFFIC_SIGN"
+            
+        return actor_type if actor_type in allowed_semantic_tags else "NONE"
 
     @staticmethod
     def get_transform(sensor_position, sensor_rotation):
@@ -151,6 +159,92 @@ class CarlaUtils:
         :return: carla.Rotation object.
         """
         return carla.Rotation(pitch=rotation_vector[0], yaw=rotation_vector[1], roll=rotation_vector[2])
+
+    @staticmethod
+    def get_semantic_tag_name(tag_id):
+        """
+        Get the semantic tag name from a tag ID (CARLA 0.10.0).
+        :param tag_id: The semantic tag ID.
+        :return: The semantic tag name as a string.
+        """
+        # CARLA 0.10.0 semantic tag mapping
+        tag_map = {
+            0: "NONE",
+            1: "Roads",
+            2: "Sidewalks",
+            3: "Buildings",
+            4: "Walls",
+            5: "Fences",
+            6: "Poles",
+            7: "TrafficLight",
+            8: "TrafficSigns",
+            9: "Vegetation",
+            10: "Terrain",
+            11: "Sky",
+            12: "Pedestrians",
+            13: "Rider",
+            14: "Car",
+            15: "Truck",
+            16: "Bus",
+            17: "Train",
+            18: "Motorcycle",
+            19: "Bicycle",
+            20: "Static",
+            21: "Dynamic",
+            22: "Other",
+            23: "Water",
+            24: "RoadLines",
+            25: "Ground",
+            26: "Bridge",
+            27: "RailTrack",
+            28: "GuardRail",
+            255: "Any"
+        }
+        return tag_map.get(tag_id, "NONE")
+
+    @staticmethod
+    def get_semantic_tag_id(tag_name):
+        """
+        Get the semantic tag ID from a tag name (CARLA 0.10.0).
+        :param tag_name: The semantic tag name.
+        :return: The semantic tag ID as an integer.
+        """
+        # CARLA 0.10.0 semantic tag mapping
+        tag_map = {
+            "NONE": 0,
+            "Roads": 1,
+            "Sidewalks": 2,
+            "Buildings": 3,
+            "Walls": 4,
+            "Fences": 5,
+            "Poles": 6,
+            "TrafficLight": 7,
+            "TrafficSigns": 8,
+            "Vegetation": 9,
+            "Terrain": 10,
+            "Sky": 11,
+            "Pedestrians": 12,
+            "Rider": 13,
+            "Car": 14,
+            "Truck": 15,
+            "Bus": 16,
+            "Train": 17,
+            "Motorcycle": 18,
+            "Bicycle": 19,
+            "Static": 20,
+            "Dynamic": 21,
+            "Other": 22,
+            "Water": 23,
+            "RoadLines": 24,
+            "Ground": 25,
+            "Bridge": 26,
+            "RailTrack": 27,
+            "GuardRail": 28,
+            "Any": 255,
+            # Legacy support for "Vehicles" - map to Car
+            "Vehicles": 14
+        }
+        return tag_map.get(tag_name, 0)
 
     @staticmethod
     def get_actor(carla_world, actor_id):

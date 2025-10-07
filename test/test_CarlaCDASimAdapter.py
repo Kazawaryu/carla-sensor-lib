@@ -9,11 +9,13 @@ import json
 import time
 import unittest
 import sys
+import os
 from dataclasses import replace
 from unittest.mock import MagicMock
 
 import numpy as np
-sys.path.append('../')
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'util')))
 
 
 from CarlaCDASimAPI import CarlaCDASimAPI
@@ -36,8 +38,8 @@ class TestCarlaCDASimAdapter(unittest.TestCase):
 
     def test_start_xml_rpc_server(self):
 
-        # Launch the server locally
-        rpc_server_thread = self.data_service.start_xml_rpc_server("localhost", 2000, "../config/simulated_sensor_config.yaml", "../config/noise_model_config.yaml", 0.5, False)
+        # Launch the server locally on a unique port to avoid conflicts
+        rpc_server_thread = self.data_service.start_xml_rpc_server("localhost", 18000, "/home/CarlaCDASimAdapter/config/simulated_sensor_config.yaml", "/home/CarlaCDASimAdapter/config/noise_model_config.yaml", 0.5, False)
 
         # Shut the server down
         time.sleep(2)
@@ -67,17 +69,26 @@ class TestCarlaCDASimAdapter(unittest.TestCase):
         # Build and register the sensor
         api = CarlaCDASimAPI.build_from_world(carla_world)
         data_service = CarlaCDASimAdapter(api)
-        rpc_server_thread = self.data_service.start_xml_rpc_server("localhost", 2000, "../config/simulated_sensor_config.yaml", "../config/noise_model_config.yaml", 0.5, False)
-
+        
+        # Initialize configs that are normally set by start_xml_rpc_server
+        data_service.sensor_config = {
+            "simulated_sensor": SimulatedSensorTestUtils.generate_simulated_sensor_config(),
+            "lidar_sensor": SimulatedSensorTestUtils.generate_lidar_sensor_config()
+        }
+        data_service.noise_model_config = SimulatedSensorTestUtils.generate_noise_model_config()
+        data_service.detection_cycle_delay_seconds = detection_cycle_delay_seconds
+        
+        # Note: Converting ids to strings as required by the API
         new_sensor_id = data_service._CarlaCDASimAdapter__create_simulated_semantic_lidar_sensor(
-            infrastructure_id, sensor_id,
+            str(infrastructure_id), str(sensor_id),
             sensor_position, sensor_rotation)
 
         # Validate sensor fields have been correctly constructed
         assert new_sensor_id == str(sensor_id)
 
         # Also validate retrieval through registration
-        assert str(sensor_id) == data_service._CarlaCDASimAdapter__get_simulated_sensor(infrastructure_id, sensor_id)
+        # Must pass strings since sensor was registered with string IDs
+        assert str(sensor_id) == data_service._CarlaCDASimAdapter__get_simulated_sensor(str(infrastructure_id), str(sensor_id))
 
     def test_get_simulated_sensor(self):
 
@@ -102,6 +113,6 @@ class TestCarlaCDASimAdapter(unittest.TestCase):
         self.data_service._CarlaCDASimAdapter__api._CarlaCDASimAPI__infrastructure_sensors = {(0, 0): sensor}
         serialized = self.data_service._CarlaCDASimAdapter__get_detected_objects(0, 0)
 
-        with open("data/test_data_serialized_detected_objects.json", "r") as file:
+        with open("test/data/test_data_serialized_detected_objects.json", "r") as file:
             expected_serialized_data = json.load(file)
             assert serialized == expected_serialized_data

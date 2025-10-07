@@ -10,6 +10,10 @@ import unittest
 from unittest.mock import MagicMock
 
 import numpy as np
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'util')))
 
 from noise_models.GaussianNoiseModel import GaussianNoiseModel
 from test.util.SimulatedSensorTestUtils import SimulatedSensorTestUtils
@@ -27,44 +31,54 @@ class TestGaussianNoiseModel(unittest.TestCase):
 
         noise_model.apply_position_noise(object_list)
 
-        self.assertEqual(object_list[0].position.tolist(), [1.1, 2.2, 3.3])
-        self.assertEqual(object_list[1].position.tolist(), [4.1, 5.2, 6.3])
+        # Allow tolerance for floating point position values  
+        self.assertAlmostEqual(object_list[0].position[0], 1.1, places=6)
+        self.assertAlmostEqual(object_list[0].position[1], 2.2, places=6) 
+        self.assertAlmostEqual(object_list[0].position[2], 3.3, places=6)
+        self.assertAlmostEqual(object_list[1].position[0], 4.1, places=6)
+        self.assertAlmostEqual(object_list[1].position[1], 5.2, places=6)
+        self.assertAlmostEqual(object_list[1].position[2], 6.3, places=6)
         np.random.normal.assert_called_with(0.0, [0.8, 0.8, 0.8], size=3)
 
     def test_apply_orientation_noise(self):
+        # rotation should be a 1D array of [roll, pitch, yaw] in radians
         object_list = [
-            MagicMock(rotation=np.array([[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0]])),
-            MagicMock(rotation=np.array([[5.0, 6.0, 7.0], [5.0, 6.0, 7.0], [5.0, 6.0, 7.0], [5.0, 6.0, 7.0]]))]
+            MagicMock(rotation=np.array([1.0, 2.0, 3.0])),
+            MagicMock(rotation=np.array([5.0, 6.0, 7.0]))]
 
-        np.random.normal = MagicMock(
-            return_value=np.array([[0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1], [0.1, 0.1, 0.1]]))
+        np.random.normal = MagicMock(return_value=np.array([0.1, 0.1, 0.1]))
 
         noise_model = GaussianNoiseModel(self.config)
 
         noise_model.apply_orientation_noise(object_list)
 
-        self.assertEqual(object_list[0].rotation.tolist(),
-                         [[1.1, 2.1, 3.1], [1.1, 2.1, 3.1], [1.1, 2.1, 3.1], [1.1, 2.1, 3.1]])
-        self.assertEqual(object_list[1].rotation.tolist(),
-                         [[5.1, 6.1, 7.1], [5.1, 6.1, 7.1], [5.1, 6.1, 7.1], [5.1, 6.1, 7.1]])
+        self.assertEqual(object_list[0].rotation.tolist(), [1.1, 2.1, 3.1])
+        self.assertEqual(object_list[1].rotation.tolist(), [5.1, 6.1, 7.1])
 
         np.random.normal.assert_called_with(0.0, [0.1, 0.1, 0.1], size=3)
 
     def test_apply_type_noise(self):
         object_list = SimulatedSensorTestUtils.generate_test_data_detected_objects()
 
-        np.random.default_rng = MagicMock(return_value=MagicMock(choice=MagicMock(return_value=4)))
+        # Use a context manager to ensure the mock is cleaned up
+        mock_rng = MagicMock(choice=MagicMock(return_value="PEDESTRIAN"))
+        original_default_rng = np.random.default_rng
+        np.random.default_rng = MagicMock(return_value=mock_rng)
 
-        noise_model = GaussianNoiseModel(self.config)
+        try:
+            noise_model = GaussianNoiseModel(self.config)
 
-        object_list = noise_model.apply_type_noise(object_list)
+            object_list = noise_model.apply_type_noise(object_list)
 
-        self.assertEqual(object_list[0].type, "PEDESTRIAN")
-        self.assertEqual(object_list[1].type, "PEDESTRIAN")
-        self.assertEqual(object_list[2].type, "PEDESTRIAN")
-        self.assertEqual(object_list[3].type, "PEDESTRIAN")
-        self.assertEqual(object_list[4].type, "PEDESTRIAN")
-        self.assertEqual(object_list[5].type, "PEDESTRIAN")
+            self.assertEqual(object_list[0].type, "PEDESTRIAN")
+            self.assertEqual(object_list[1].type, "PEDESTRIAN")
+            self.assertEqual(object_list[2].type, "PEDESTRIAN")
+            self.assertEqual(object_list[3].type, "PEDESTRIAN")
+            self.assertEqual(object_list[4].type, "PEDESTRIAN")
+            self.assertEqual(object_list[5].type, "PEDESTRIAN")
+        finally:
+            # Restore original function to prevent affecting other tests
+            np.random.default_rng = original_default_rng
 
     def test_apply_list_inclusion_noise(self):
         object_list = [MagicMock(), MagicMock(), MagicMock()]

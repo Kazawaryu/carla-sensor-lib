@@ -8,9 +8,12 @@
 
 import os
 import unittest
+import sys
 
 import numpy as np
 import yaml
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..', 'src')))
 
 from util.SimulatedSensorUtils import SimulatedSensorUtils
 from test.util.SimulatedSensorTestUtils import SimulatedSensorTestUtils
@@ -47,5 +50,5 @@ class TestSimulatedSensorUtils(unittest.TestCase):
 
         # Test list of objects containing numpy arrays
         json_str_list = SimulatedSensorUtils.serialize_to_json([test_obj, test_obj])
-        self.assertEqual(json_str_list,
-                         '["{\\"a\\": \\"Some string.\\", \\"b\\": [20.1, 30.0, 40.1], \\"c\\": 3, \\"d\\": [[1, 2, 3], [4, 5, 6]]}", "{\\"a\\": \\"Some string.\\", \\"b\\": [20.1, 30.0, 40.1], \\"c\\": 3, \\"d\\": [[1, 2, 3], [4, 5, 6]]}"]')
+        expected_json_list = '[{"a": "Some string.", "b": [20.1, 30.0, 40.1], "c": 3, "d": [[1, 2, 3], [4, 5, 6]]},{"a": "Some string.", "b": [20.1, 30.0, 40.1], "c": 3, "d": [[1, 2, 3], [4, 5, 6]]}]'
+        self.assertEqual(json_str_list, expected_json_list)
