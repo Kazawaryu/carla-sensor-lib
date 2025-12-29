@@ -14,6 +14,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 import sys
 sys.path.append('../')
 
+import os
 cur_path = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(cur_path)
 
