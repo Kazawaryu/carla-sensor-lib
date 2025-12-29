@@ -13,6 +13,10 @@ import datetime
 from xmlrpc.server import SimpleXMLRPCServer
 import sys
 sys.path.append('../')
+
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(cur_path)
+
 from CarlaCDASimAPI import CarlaCDASimAPI
 from util.SimulatedSensorUtils import SimulatedSensorUtils
 class CarlaCDASimAdapter:

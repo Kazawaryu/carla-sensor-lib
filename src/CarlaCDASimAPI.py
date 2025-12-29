@@ -16,6 +16,9 @@ import carla
 import sys
 sys.path.append('../')
 
+cur_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(cur_path)
+
 from collector.SensorDataCollector import SensorDataCollector
 from noise_models.NoiseModelFactory import NoiseModelFactory
 from objects.CarlaSensor import CarlaSensorBuilder
