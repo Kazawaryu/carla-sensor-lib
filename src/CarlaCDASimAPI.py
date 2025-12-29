@@ -11,7 +11,7 @@ import sched
 import threading
 import time
 from time import sleep
-
+import logging
 import carla
 import sys
 sys.path.append('../')
@@ -100,10 +100,12 @@ class CarlaCDASimAPI:
         is_return = False
         # Parameter checks
         if not isinstance(infrastructure_id, str):
-            print("Error: infrastructure_id needs to be a string.")
+            # print("Error: infrastructure_id needs to be a string.")
+            logging.error("Error: infrastructure_id needs to be a string.")
             is_return = True
         if not isinstance(sensor_id, str):
-            print("Error: sensor_id needs to be a string.")
+            # print("Error: sensor_id needs to be a string.")
+            logging.error("Error: sensor_id needs to be a string.")
             is_return = True
 
         if is_return:
@@ -124,8 +126,9 @@ class CarlaCDASimAPI:
         # Fix for CARLA not updating position immediately
         sleep(0.2)
 
-        print(f"CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
-
+        # print(f"CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
+        logging.info(f"CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
+        
         # Build internal objects
         sensor = CarlaSensorBuilder.build_sensor(carla_sensor)
         data_collector = SensorDataCollector(self.__carla_world, carla_sensor)
@@ -146,16 +149,20 @@ class CarlaCDASimAPI:
         # https://github.com/usdot-fhwa-stol/carma-utils/issues/180
         lidar_bp = CarlaCDASimAPI.generate_lidar_bp(blueprint_library, carla_sensor_config, "lidar")
         lidar_spawn = self.__carla_world.spawn_actor(lidar_bp, sensor_transform)
-        print(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
+        # print(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
+        logging.info(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
 
         # Start compute thread
         scheduler = sched.scheduler(time.time, time.sleep)
         scheduler.enter(detection_cycle_delay_seconds, 1, self.__schedule_next_compute,
                         (scheduler, simulated_sensor, detection_cycle_delay_seconds))
         scheduler_thread = threading.Thread(target=scheduler.run)
-        print("*********************************")
-        print("** Starting sensorlib compute. **")
-        print("*********************************")
+        # print("*********************************")
+        # print("** Starting sensorlib compute. **")
+        # print("*********************************")
+        logging.info("*********************************")
+        logging.info("** Starting sensorlib compute. **")
+        logging.info("*********************************")
         scheduler_thread.start()
 
         return simulated_sensor
