@@ -15,6 +15,8 @@ import rclpy
 from rclpy.node import Node
 import carla
 import sys
+import numpy as np
+
 sys.path.append('../')
  
 import os
