@@ -109,14 +109,16 @@ class CarlaCDASimAPI(Node):
         """
         is_return = False
         # Parameter checks
+        
         if not isinstance(infrastructure_id, str):
             # print("Error: infrastructure_id needs to be a string.")
-            self.get_logger().error("Error: infrastructure_id needs to be a string.")
-            is_return = True
+            self.get_logger().error("[sensorlib] Error: infrastructure_id needs to be a string.")
+            # make the infrastructure_id a string instance
+            infrastructure_id = str(infrastructure_id)
         if not isinstance(sensor_id, str):
             # print("Error: sensor_id needs to be a string.")
-            self.get_logger().error("Error: sensor_id needs to be a string.")
-            is_return = True
+            self.get_logger().error("[sensorlib] Error: sensor_id needs to be a string.")
+            sensor_id = str(sensor_id) 
  
         if is_return:
             is_return = False
@@ -137,7 +139,7 @@ class CarlaCDASimAPI(Node):
         sleep(0.2)
  
         # print(f"CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
-        self.get_logger().info(f"CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
+        self.get_logger().info(f"[sensorlib] CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
         
         # Build internal objects
         sensor = CarlaSensorBuilder.build_sensor(carla_sensor)
@@ -160,7 +162,7 @@ class CarlaCDASimAPI(Node):
         lidar_bp = CarlaCDASimAPI.generate_lidar_bp(blueprint_library, carla_sensor_config, "lidar")
         lidar_spawn = self.__carla_world.spawn_actor(lidar_bp, sensor_transform)
         # print(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
-        self.get_logger().info(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
+        self.get_logger().info(f"[sensorlib] Created a dummy lidar for visualization with id: {lidar_spawn.id}")
  
         # Start compute thread
         scheduler = sched.scheduler(time.time, time.sleep)
@@ -170,9 +172,9 @@ class CarlaCDASimAPI(Node):
         # print("*********************************")
         # print("** Starting sensorlib compute. **")
         # print("*********************************")
-        self.get_logger().info("*********************************")
-        self.get_logger().info("** Starting sensorlib compute. **")
-        self.get_logger().info("*********************************")
+        self.get_logger().info("[sensorlib] *********************************")
+        self.get_logger().info("[sensorlib] ** Starting sensorlib compute. **")
+        self.get_logger().info("[sensorlib] *********************************")
         scheduler_thread.start()
  
         return simulated_sensor
