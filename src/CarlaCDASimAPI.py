@@ -157,8 +157,8 @@ class CarlaCDASimAPI(Node):
         hf_vertical_fov = np.deg2rad(10)
 
         hf_rotation_frequency = 1
-        hf_rotation_period = 1.0 / rotation_frequency
-        hf_points_per_second = num_horizontal_points_per_scan * num_vertical_points_per_scan * rotation_frequency
+        hf_rotation_period = 1.0 / hf_rotation_frequency
+        hf_points_per_second = hf_num_horizontal_points_per_scan * hf_num_vertical_points_per_scan * hf_rotation_frequency
 
         
         carla_sensor_config["horizontal_fov"] = 360.0
