@@ -82,6 +82,37 @@ been detected.
 
 The noise model interface is extensible and can support additional models in the future.
 
+
+## Usage
+1. Enable Carla-Sensor-lib in carma-carla-integration
+
+    Enable the sensor object interface by setting enable_sensor_objects to true in the CARMA–CARLA bridge launch file:
+    ``` python
+    # See line 117 in:
+    # ./carma-carla-integration/carma-carla-bridge/launch/carma-carla-bridge.launch.py
+    DeclareLaunchArgument('enable_sensor_objects'default_value='true'),
+    ```
+2. Configure the environment in cdasim-config
+
+    Mount the sensor configuration file and specify its path via an environment variable in cdasim-config:
+    ``` yml
+    cdasim:
+    volumes:
+        - ./sensor_config.json:/opt/cdasim/sensor_config.json
+    environment:
+        - SENSOR_JSON_FILE=/opt/cdasim/sensor_config.json
+    ```
+3. Launch CDASim
+
+    Start the CDASim service using the configuration defined in cdasim-config.
+
+4. Verify the output
+
+    The output of Carla-Sensor-lib is published to the ROS 2 topic. This topic can be accessed from within the carma-carla-integration container.
+    ``` shell
+    /environment/external_objects
+    ```
+
 ## About
 
 Developed by the [CARMA Program](https://highways.dot.gov/research/operations/CARMA) at the Federal
