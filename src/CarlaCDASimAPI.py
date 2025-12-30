@@ -148,25 +148,24 @@ class CarlaCDASimAPI(Node):
         data_collector = SensorDataCollector(self.__carla_world, carla_sensor)
         noise_model = NoiseModelFactory.get_noise_model(noise_model_config["noise_model_name"], noise_model_config)
  
- 
-        # # hard fix to use in CARLA 0.10.0
-        # hf_num_horizontal_points_per_scan = 360
-        # hf_num_vertical_points_per_scan = 60
+        # fix to use in CARLA 0.10.0
+        hf_num_horizontal_points_per_scan = 360
+        hf_num_vertical_points_per_scan = 60
 
-        # hf_horizontal_fov = np.deg2rad(15)
-        # hf_vertical_fov = np.deg2rad(10)
+        hf_horizontal_fov = np.deg2rad(15)
+        hf_vertical_fov = np.deg2rad(10)
 
-        # hf_rotation_frequency = 1
-        # hf_rotation_period = 1.0 / hf_rotation_frequency
-        # hf_points_per_second = hf_num_horizontal_points_per_scan * hf_num_vertical_points_per_scan * hf_rotation_frequency
+        hf_rotation_frequency = 1
+        hf_rotation_period = 1.0 / hf_rotation_frequency
+        hf_points_per_second = hf_num_horizontal_points_per_scan * hf_num_vertical_points_per_scan * hf_rotation_frequency
 
         
-        # carla_sensor_config["horizontal_fov"] = 360.0
-        # carla_sensor_config["upper_fov"] = 30.0
-        # carla_sensor_config["lower_fov"] = -30.0
-        # carla_sensor_config["channels"] = hf_num_vertical_points_per_scan
-        # carla_sensor_config["rotation_period"] = hf_rotation_period
-        # carla_sensor_config["points_per_second"] = hf_points_per_second
+        carla_sensor_config["horizontal_fov"] = 360.0
+        carla_sensor_config["upper_fov"] = 30.0
+        carla_sensor_config["lower_fov"] = -30.0
+        carla_sensor_config["channels"] = hf_num_vertical_points_per_scan
+        carla_sensor_config["rotation_period"] = hf_rotation_period
+        carla_sensor_config["points_per_second"] = hf_points_per_second
  
         # Construct the SimulatedSensor
         simulated_sensor = SemanticLidarSensor(infrastructure_id, sensor_id, simulated_sensor_config,
@@ -191,12 +190,8 @@ class CarlaCDASimAPI(Node):
         scheduler.enter(detection_cycle_delay_seconds, 1, self.__schedule_next_compute,
                         (scheduler, simulated_sensor, detection_cycle_delay_seconds))
         scheduler_thread = threading.Thread(target=scheduler.run)
-        # print("*********************************")
-        # print("** Starting sensorlib compute. **")
-        # print("*********************************")
-        self.get_logger().info("[sensorlib] *********************************")
-        self.get_logger().info("[sensorlib] ** Starting sensorlib compute. **")
-        self.get_logger().info("[sensorlib] *********************************")
+        self.get_logger().info("[sensorlib] Starting sensorlib compute.")
+        
         scheduler_thread.start()
  
         return simulated_sensor
