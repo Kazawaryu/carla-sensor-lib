@@ -19,7 +19,7 @@ public class Main {
 
         // Connect
         XmlRpcClientConfigImpl config = new XmlRpcClientConfigImpl();
-        config.setServerURL(new URL("http://127.0.0.1:8000/RPC2"));
+        config.setServerURL(new URL("http://127.0.0.1:8091/RPC2"));
 
         client = new XmlRpcClient();
         client.setConfig(config);

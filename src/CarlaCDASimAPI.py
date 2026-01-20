@@ -11,8 +11,7 @@ import sched
 import threading
 import time
 from time import sleep
-import rclpy
-from rclpy.node import Node
+import logging
 import carla
 import sys
 import numpy as np
@@ -30,24 +29,17 @@ from sensor.SemanticLidarSensor import SemanticLidarSensor
 from util.CarlaUtils import CarlaUtils
  
  
-class CarlaCDASimAPI(Node):
+class CarlaCDASimAPI:
     """
     Interface to build and manage SimulatedSensors
     """
- 
+
     def __init__(self):
-        # Initialize rclpy if not already initialized
-        try:
-            rclpy.init()
-        except RuntimeError:
-            # rclpy is already initialized, which is fine
-            pass
-        super().__init__('carla_cda_sim_api')
         self.__client = None
         self.__carla_world = None
         self.__infrastructure_sensors = {}
- 
-        self.get_logger().info("CarlaCDASimAPI: Initialized CarlaCDASimAPI instance.")
+
+        logging.info("CarlaCDASimAPI: Initialized CarlaCDASimAPI instance.")
  
     @staticmethod
     def build_from_host_spec(carla_host, carla_port):
@@ -114,12 +106,12 @@ class CarlaCDASimAPI(Node):
         
         if not isinstance(infrastructure_id, str):
             # print("Error: infrastructure_id needs to be a string.")
-            self.get_logger().error("[sensorlib] Error: infrastructure_id needs to be a string.")
+            logging.warning("[sensorlib] Error: infrastructure_id needs to be a string.")
             # make the infrastructure_id a string instance
             infrastructure_id = str(infrastructure_id)
         if not isinstance(sensor_id, str):
             # print("Error: sensor_id needs to be a string.")
-            self.get_logger().error("[sensorlib] Error: sensor_id needs to be a string.")
+            logging.warning("[sensorlib] Error: sensor_id needs to be a string.")
             sensor_id = str(sensor_id) 
  
         if is_return:
@@ -141,7 +133,7 @@ class CarlaCDASimAPI(Node):
         sleep(0.2)
  
         # print(f"CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
-        self.get_logger().info(f"[sensorlib] CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
+        logging.info(f"[sensorlib] CarlaCDASimAPI: Creating sensor in CARLA at sensor_position: {carla_sensor.get_location()}")
         
         # Build internal objects
         sensor = CarlaSensorBuilder.build_sensor(carla_sensor)
@@ -183,14 +175,14 @@ class CarlaCDASimAPI(Node):
         lidar_bp = CarlaCDASimAPI.generate_lidar_bp(blueprint_library, carla_sensor_config, "lidar")
         lidar_spawn = self.__carla_world.spawn_actor(lidar_bp, sensor_transform)
         # print(f"Created a dummy lidar for visualization with id: {lidar_spawn.id}")
-        self.get_logger().info(f"[sensorlib] Created a dummy lidar for visualization with id: {lidar_spawn.id}")
+        logging.info(f"[sensorlib] Created a dummy lidar for visualization with id: {lidar_spawn.id}")
  
         # Start compute thread
         scheduler = sched.scheduler(time.time, time.sleep)
         scheduler.enter(detection_cycle_delay_seconds, 1, self.__schedule_next_compute,
                         (scheduler, simulated_sensor, detection_cycle_delay_seconds))
         scheduler_thread = threading.Thread(target=scheduler.run)
-        self.get_logger().info("[sensorlib] Starting sensorlib compute.")
+        logging.info("[sensorlib] Starting sensorlib compute.")
         
         scheduler_thread.start()
  
@@ -255,6 +247,5 @@ class CarlaCDASimAPI(Node):
         return lidar_bp
  
 if __name__ == "__main__":
-    rclpy.init()
     api = CarlaCDASimAPI.build_from_host_spec("localhost", 2000)
  

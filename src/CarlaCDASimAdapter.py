@@ -102,7 +102,7 @@ if __name__ == "__main__":
     
     arg_parser.add_argument(
         "--carla-host",
-        default="127.0.0.1",
+        default="172.2.0.3",
         type=str,
         help="CARLA host. (default: \"localhost\")")
     
@@ -114,15 +114,15 @@ if __name__ == "__main__":
     
     arg_parser.add_argument(
         "--xmlrpc-server-host",
-        default="localhost",
+        default="172.2.0.5",
         type=str,
         help="XML-RPC server host. (default: \"localhost\")")
     
     arg_parser.add_argument(
         "--xmlrpc-server-port",
-        default=8000,
+        default=8091,
         type=int,
-        help="XML-RPC server port. (default: 8000)")
+        help="XML-RPC server port. (default: 8091)")
     
     arg_parser.add_argument(
         "--sensor-config-file",

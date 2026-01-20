@@ -17,8 +17,7 @@ from objects.DetectedObject import DetectedObjectBuilder
 from sensor.SimulatedSensor import SimulatedSensor
 from util.CarlaUtils import CarlaUtils
 
-import rclpy
-from rclpy.logging import get_logger
+import logging
 
 prev_objects = {}
 
@@ -54,11 +53,8 @@ class SemanticLidarSensor(SimulatedSensor):
         self.__simulated_sensor_config = simulated_sensor_config
         self.__carla_sensor_config = carla_sensor_config
         
-        # Initialize ROS2 logger
-        self.__logger = get_logger(f'semantic_lidar_sensor_{sensor_id}')
-        
         # Log the simulated_sensor_config
-        self.__logger.info(f"SemanticLidarSensor {sensor_id} initialized with config: {simulated_sensor_config}")
+        logging.info(f"SemanticLidarSensor {sensor_id} initialized with config: {simulated_sensor_config}")
         
         # CARLA connection
         self.__carla_world = carla_world
@@ -137,10 +133,6 @@ class SemanticLidarSensor(SimulatedSensor):
     def get_detected_objects(self):
         """Returns the latest detected objects."""
         return self.__detected_objects
-
-    def get_logger(self):
-        """Returns the ROS2 logger instance."""
-        return self.__logger
 
     # ------------------------------------------------------------------------------
     # CARLA Scene DetectedObject Retrieval
